@@ -1,5 +1,4 @@
 
-
 from numpy import sqrt, log, pi, tan, dot, cross, identity
 from numpy import absolute, nan, isfinite, minimum, maximum
 from numpy import array, ndarray, linspace, full, zeros, stack, savez, int64
@@ -19,17 +18,17 @@ class BarycentricGeometryMatrix(object):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape (N,3) where 'N' is
+        each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
         the total number of triangles.
 
     :param ray_origins: \
-        The (x,y,z) position vectors of the origin of each ray (i.e. line-of-sight) as
-        a 2D numpy array. The array must have shape (M,3) where 'M' is the total number
+        The `(x,y,z)` position vectors of the origin of each ray (i.e. line-of-sight) as
+        a 2D numpy array. The array must have shape `(M,3)` where `M` is the total number
         of rays.
 
     :param ray_ends: \
-        The (x,y,z) position vectors of the end-points of each ray (i.e. line-of-sight) as
-        a 2D numpy array. The array must have shape (M,3) where 'M' is the total number
+        The `(x,y,z)` position vectors of the end-points of each ray (i.e. line-of-sight) as
+        a 2D numpy array. The array must have shape `(M,3)` where `M` is the total number
         of rays.
     """
     def __init__(self, R, z, triangles, ray_origins, ray_ends):
@@ -267,7 +266,7 @@ class BarycentricGeometryMatrix(object):
         lam1_int = self.lam1_coeffs[tri,0]*R_coeff + self.lam1_coeffs[tri,1]*z_coeff + self.lam1_coeffs[tri,2]*dl
         lam2_int = self.lam2_coeffs[tri,0]*R_coeff + self.lam2_coeffs[tri,1]*z_coeff + self.lam2_coeffs[tri,2]*dl
         lam3_int = dl - lam1_int - lam2_int
-        return lam1_int, lam2_int, lam3_int # 0.0051073
+        return lam1_int, lam2_int, lam3_int
 
     @staticmethod
     def check_geometry_data(R, z, triangle_inds, ray_starts, ray_ends):
