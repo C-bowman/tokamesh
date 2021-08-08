@@ -1,5 +1,6 @@
 
-from numpy import array, zeros, linspace, sqrt, ceil, sin, cos, arctan2, in1d, arange, int64
+from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum
+from numpy import array, zeros, linspace, arange, int64, concatenate, atleast_1d
 
 
 def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pivot=(0,0)):
@@ -101,3 +102,115 @@ def trim_vertices(R, z, triangles, bools):
     index_converter = zeros(R.size, dtype=int64)
     index_converter[vert_inds] = arange(vert_inds.size)
     return R[vert_inds], z[vert_inds], index_converter[triangles[tri_inds,:]]
+
+
+
+
+class Polygon(object):
+    """
+    Class for evaluating whether a given point is inside a polygon,
+    or the distance between it and the nearest point on the polygon.
+
+    :param x: \
+        The x-values of the polygon vertices as a 1D numpy array.
+
+    :param y: \
+        The y-values of the polygon vertices as a 1D numpy array.
+    """
+    def __init__(self, x, y):
+        self.x = array(x)
+        self.y = array(y)
+        if (self.x[0] != self.x[-1]) or (self.y[0] != self.y[-1]):
+            self.x = concatenate([self.x, atleast_1d(self.x[0])])
+            self.y = concatenate([self.y, atleast_1d(self.y[0])])
+
+        self.n = len(x)
+
+        self.dx = diff(self.x)
+        self.dy = diff(self.y)
+        self.im = self.dx / self.dy
+        self.c = self.y[:-1] - self.x[:-1]*self.dy/self.dx
+
+        # pre-calculate the bounding rectangle of each edge for intersection testing
+        self.x_upr = maximum(self.x[1:], self.x[:-1])
+        self.x_lwr = minimum(self.x[1:], self.x[:-1])
+        self.y_upr = maximum(self.y[1:], self.y[:-1])
+        self.y_lwr = minimum(self.y[1:], self.y[:-1])
+
+        # normalise the unit vectors
+        self.lengths = sqrt(self.dx**2 + self.dy**2)
+        self.dx /= self.lengths
+        self.dy /= self.lengths
+
+        self.zero_im = self.im == 0.
+
+    def is_inside(self, v):
+        x, y = v
+        k = (y - self.c)*self.im
+
+        limits_check = (self.y_lwr <= y) & (y <= self.y_upr) & (x <= self.x_upr)
+        isec_check = ((self.x_lwr <= k) & (k <= self.x_upr) & (x <= k)) | self.zero_im
+
+        intersections = (limits_check & isec_check).sum()
+        if intersections % 2 == 0:
+            return False
+        else:
+            return True
+
+    def distance(self, v):
+        x, y = v
+        dx = x - self.x[:-1]
+        dy = y - self.y[:-1]
+
+        L = (dx*self.dx + dy*self.dy) / self.lengths
+        D = dx*self.dy - dy*self.dx
+        booles = (0 <= L) & (L <= 1)
+
+        points_min = sqrt(dx**2 + dy**2).min()
+
+        if booles.any():
+            perp_min = abs(D[booles]).min()
+            return min(perp_min, points_min)
+        else:
+            return points_min
+
+    def diagnostic_plot(self):
+
+        xmin = self.x.min()
+        xmax = self.x.max()
+        ymin = self.y.min()
+        ymax = self.y.max()
+        xpad = (xmax-xmin)*0.15
+        ypad = (ymax-ymin)*0.15
+
+        N = 200
+        x_ax = linspace(xmin-xpad, xmax+xpad, N)
+        y_ax = linspace(ymin-ypad, ymax+ypad, N)
+
+        inside = zeros([N,N])
+        distance = zeros([N,N])
+        for i in range(N):
+            for j in range(N):
+                v = [x_ax[i], y_ax[j]]
+                inside[i,j] = self.is_inside(v)
+                distance[i,j] = self.distance(v)
+
+        import matplotlib.pyplot as plt
+        fig = plt.figure(figsize=(12,4))
+        ax1 = fig.add_subplot(131)
+        ax1.contourf(x_ax, y_ax, inside.T)
+        ax1.plot(self.x, self.y, '.-', c='white', lw=2)
+        ax1.set_title('point is inside polygon')
+
+        ax2 = fig.add_subplot(132)
+        ax2.contourf(x_ax, y_ax, distance.T, 100)
+        ax2.plot(self.x, self.y, '.-', c='white', lw=2)
+        ax2.set_title('distance from polygon')
+
+        ax3 = fig.add_subplot(133)
+        ax3.contourf(x_ax, y_ax, (distance*inside).T, 100)
+        ax3.plot(self.x, self.y, '.-', c='white', lw=2)
+        ax3.set_title('interior point distance from polygon')
+
+        plt.tight_layout()
+        plt.show()
