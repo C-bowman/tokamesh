@@ -3,6 +3,7 @@ from numpy import arange, linspace, searchsorted, stack, zeros, full, log2, floo
 from numpy import int64
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
+from tokamesh.geometry import build_edge_map
 
 
 class TriangularMesh(object):
@@ -35,25 +36,10 @@ class TriangularMesh(object):
         self.lam1_coeffs = 0.5*stack([z2-z3, R3-R2, R2*z3 - R3*z2], axis=1) / self.area[:,None]
         self.lam2_coeffs = 0.5*stack([z3-z1, R1-R3, R3*z1 - R1*z3], axis=1) / self.area[:,None]
 
-        # number all the edges in the mesh, and store the indices of which edges
-        # are part of each triangle
-        self.triangle_edges = zeros([self.n_triangles, 3], dtype=int64)
-        edge_dict = {}
-        for i in range(self.n_triangles):
-            s1 = (self.triangle_vertices[i,0], self.triangle_vertices[i,1])
-            s2 = (self.triangle_vertices[i,1], self.triangle_vertices[i,2])
-            s3 = (self.triangle_vertices[i,0], self.triangle_vertices[i,2])
-            for j, edge in enumerate([s1, s2, s3]):
-                if edge not in edge_dict:
-                    edge_dict[edge] = len(edge_dict)
-                self.triangle_edges[i,j] = edge_dict[edge]
-
-        self.n_edges = len(edge_dict)
-        self.R_edges = zeros([self.n_edges, 2])
-        self.z_edges = zeros([self.n_edges, 2])
-        for edge, i in edge_dict.items():
-            self.R_edges[i,:] = [self.R[edge[0]], self.R[edge[1]]]
-            self.z_edges[i,:] = [self.z[edge[0]], self.z[edge[1]]]
+        # Construct a mapping from triangles to edges, and edges to vertices
+        self.triangle_edges, self.edge_vertices = build_edge_map(self.triangle_vertices)
+        self.R_edges = self.R[self.edge_vertices]
+        self.z_edges = self.z[self.edge_vertices]
 
         # store info about the bounds of the mesh
         self.R_limits = [self.R.min(), self.R.max()]

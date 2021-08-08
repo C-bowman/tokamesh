@@ -62,25 +62,10 @@ class BarycentricGeometryMatrix(object):
         self.z_tan = self.pixels[:,2] + self.rays[:,2]*self.L_tan  # z-height of the tangency point
         self.m = self.rays[:,2] / sqrt(self.q2)  # gradient of the hyperbola asymptote line
 
-        # number all the edges in the mesh, and store the indices of which edges
-        # are part of each triangle
-        self.triangle_edges = zeros([self.n_triangles, 3], dtype=int64)
-        edge_dict = {}
-        for i in range(self.n_triangles):
-            s1 = (self.triangle_vertices[i,0], self.triangle_vertices[i,1])
-            s2 = (self.triangle_vertices[i,1], self.triangle_vertices[i,2])
-            s3 = (self.triangle_vertices[i,0], self.triangle_vertices[i,2])
-            for j, edge in enumerate([s1, s2, s3]):
-                if edge not in edge_dict:
-                    edge_dict[edge] = len(edge_dict)
-                self.triangle_edges[i,j] = edge_dict[edge]
-
-        self.n_edges = len(edge_dict)
-        self.R_edges = zeros([self.n_edges, 2])
-        self.z_edges = zeros([self.n_edges, 2])
-        for edge, i in edge_dict.items():
-            self.R_edges[i,:] = [self.R[edge[0]], self.R[edge[1]]]
-            self.z_edges[i,:] = [self.z[edge[0]], self.z[edge[1]]]
+        # Construct a mapping from triangles to edges, and edges to vertices
+        self.triangle_edges, self.edge_vertices = build_edge_map(self.triangle_vertices)
+        self.R_edges = self.R[self.edge_vertices]
+        self.z_edges = self.z[self.edge_vertices]
 
         # pre-calculate the properties of each edge
         self.R_edge_mid = self.R_edges.mean(axis=1)
@@ -336,6 +321,40 @@ class GeometryFactors(object):
         ray_inds = array([key[1] for key in self.vertex_map.keys()])
         data_vals = array([v for v in self.vertex_map.values()])
         return data_vals, vertex_inds, ray_inds
+
+
+
+
+def build_edge_map(triangles):
+    """
+    Generates the `triangle_edges` array, which maps the index of a triangle, to the
+    indices of the edges it contains, and the `edge_vertices` array, which maps the
+    index of an edge to the indices of the vertices it contains.
+
+    :param triangles: \
+        A 2D numpy array of integers specifying the indices of the vertices which form
+        each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
+        the total number of triangles.
+
+    :return triangle_edges, edge_vertices:
+    """
+    n_triangles = triangles.shape[0]
+    triangle_edges = zeros([n_triangles,3], dtype=int64)
+    edge_dict = {}
+    for i in range(n_triangles):
+        s1 = (triangles[i,0], triangles[i,1])
+        s2 = (triangles[i,1], triangles[i,2])
+        s3 = (triangles[i,0], triangles[i,2])
+        for j, edge in enumerate([s1, s2, s3]):
+            if edge not in edge_dict:
+                edge_dict[edge] = len(edge_dict)
+            triangle_edges[i,j] = edge_dict[edge]
+
+    edge_vertices = zeros([len(edge_dict), 2], dtype=int64)
+    for edge, i in edge_dict.items():
+        edge_vertices[i,:] = [edge[0], edge[1]]
+
+    return triangle_edges, edge_vertices
 
 
 
