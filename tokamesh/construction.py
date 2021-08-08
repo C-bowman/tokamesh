@@ -1,6 +1,8 @@
 
-from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum
+from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique
 from numpy import array, zeros, linspace, arange, int64, concatenate, atleast_1d
+from warnings import warn
+from tokamesh.geometry import build_edge_map
 
 
 def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pivot=(0,0)):
@@ -214,3 +216,82 @@ class Polygon(object):
 
         plt.tight_layout()
         plt.show()
+
+
+
+
+def find_boundaries(triangles):
+    """
+    Find all the boundaries of a given mesh.
+
+    :param triangles: \
+        A 2D numpy array of integers specifying the indices of the vertices which form
+        each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
+        the total number of triangles.
+
+    :return: \
+        A list of 1D numpy arrays containing the indices of the vertices in each boundary.
+    """
+    # Construct a mapping from triangles to edges, and edges to vertices
+    triangle_edges, edge_vertices = build_edge_map(triangles)
+    # identify edges on the boundary by finding edges which are only part of one triangle
+    unique_vals, counts = unique(triangle_edges, return_counts=True)
+    boundary_edges_indices = (counts == 1).nonzero()[0]
+    boundary_edges = edge_vertices[boundary_edges_indices, :]
+
+    # now create a map between an edge, and the other edges to which it's connected
+    boundary_connections = {}
+    for i in range(boundary_edges.shape[0]):
+        edges = ((boundary_edges[i, 0] == boundary_edges) | (boundary_edges[i, 1] == boundary_edges)).nonzero()[0]
+        boundary_connections[i] = [e for e in edges if e != i]
+
+    # we use a set to keep track of which edges have already been used as part of a boundary
+    unused_edges = {i for i in range(boundary_edges.shape[0])}
+
+    # now follow the connections map to build the boundaries
+    boundaries = []
+    while len(unused_edges) > 0:
+        current_boundary = [unused_edges.pop()]  # start at an arbitrary unused edge
+        while True:
+            connected_edges = boundary_connections[current_boundary[-1]]
+            for edge in connected_edges:
+                if edge in unused_edges:
+                    current_boundary.append(edge)
+                    unused_edges.remove(edge)
+                    break
+            else:
+                break
+        boundaries.append(boundary_edges_indices[current_boundary])
+
+    _, edges_per_vertex = unique(boundary_edges, return_counts=True)
+    if edges_per_vertex.max() > 2:
+        warn(
+            """
+            [ find_boundaries warning ]
+            >> The given mesh contains at least two sub-meshes which
+            >> are connected by only one vertex. Currently, it is not
+            >> guaranteed that this function will draw separate boundaries
+            >> for each sub-mesh - this will be addressed in future update.
+            """
+        )
+
+    # Now we need to convert the boundaries from edge indices to vertex indices
+    vertex_boundaries = []
+    for boundary in boundaries:
+        # the order of the first two vertex indices needs to match the direction
+        # in which the boundary is being traced.
+        v1, v2 = edge_vertices[boundary[0],:]
+        if v1 in edge_vertices[boundary[1],:]:
+            vertex_boundary = [v2, v1]
+        else:
+            vertex_boundary = [v1, v2]
+
+        # now loop over all the other edges and add the new vertex that appears
+        for edge in boundary[1:]:
+            v1, v2 = edge_vertices[edge,:]
+            next_vertex = v1 if (v1 not in vertex_boundary) else v2
+            vertex_boundary.append(next_vertex)
+
+        vertex_boundaries.append(array(vertex_boundary))
+
+    return vertex_boundaries
