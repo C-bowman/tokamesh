@@ -295,3 +295,43 @@ def find_boundaries(triangles):
         vertex_boundaries.append(array(vertex_boundary))
 
     return vertex_boundaries
+
+
+
+
+def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1.):
+    """
+    Generate an equilateral mesh which fills the space inside a given boundary,
+    up to a chosen distance to the boundary edge.
+
+    :param R_boundary: \
+        The major-radius values of the boundary as a 1D numpy array.
+
+    :param z_boundary: \
+        The z-height values of the boundary as a 1D numpy array.
+
+    :param scale: \
+        The side-length of the equilateral triangles.
+
+    :param padding_factor: \
+        A multiplicative factor which defines the minimum distance to the boundary
+        such that `min_distance = padding_factor*scale`. No vertices in the returned
+        mesh will be closer to the boundary than `min_distance`.
+
+    :return R_vert, z_vert, triangles: \
+        `R_vert` is the major-radius of the vertices as a 1D array. `z_vert` the is
+        z-height of the vertices as a 1D array. `triangles` is a 2D array of integers
+        of shape `(N,3)` specifying the indices of the vertices which form each triangle
+        in the mesh, where `N` is the total number of triangles.
+    """
+    poly = Polygon(R_boundary, z_boundary)
+
+    r_range = (min(R_boundary) - 3 * scale, max(R_boundary) + 3 * scale)
+    z_range = (min(z_boundary)-3*scale, max(z_boundary)+3*scale)
+
+    R, z, triangles = equilateral_mesh(x_range=r_range, y_range=z_range, scale=scale)
+
+    # remove all triangles which are too close too or inside walls
+    bools = array([poly.is_inside(p)*poly.distance(p) < scale*padding_factor for p in zip(R,z)])
+
+    return trim_vertices(R, z, triangles, bools)

@@ -40,6 +40,7 @@ class TriangularMesh(object):
         self.triangle_edges, self.edge_vertices = build_edge_map(self.triangle_vertices)
         self.R_edges = self.R[self.edge_vertices]
         self.z_edges = self.z[self.edge_vertices]
+        self.n_edges = self.edge_vertices.shape[0]
 
         # store info about the bounds of the mesh
         self.R_limits = [self.R.min(), self.R.max()]
@@ -154,6 +155,8 @@ class TriangularMesh(object):
             Any valid keyword argument of matplotlib.pyplot.plot may be given in
             order to change the properties of the plot.
         """
+        if ('color' not in kwargs) and ('c' not in kwargs):
+            kwargs['color'] = 'black'
         ax.plot(self.R_edges.T, self.z_edges.T, **kwargs)
 
 
