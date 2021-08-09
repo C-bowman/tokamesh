@@ -66,6 +66,7 @@ class BarycentricGeometryMatrix(object):
         self.triangle_edges, self.edge_vertices = build_edge_map(self.triangle_vertices)
         self.R_edges = self.R[self.edge_vertices]
         self.z_edges = self.z[self.edge_vertices]
+        self.n_edges = self.edge_vertices.shape[0]
 
         # pre-calculate the properties of each edge
         self.R_edge_mid = self.R_edges.mean(axis=1)

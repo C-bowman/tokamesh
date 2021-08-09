@@ -1,6 +1,6 @@
 
-from numpy import arange, linspace, searchsorted, stack, zeros, full, log2, floor, unique, atleast_1d
-from numpy import int64
+from numpy import searchsorted, stack, log2, floor, unique, atleast_1d
+from numpy import arange, linspace, int64, full, zeros, meshgrid
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
 from tokamesh.geometry import build_edge_map
@@ -9,8 +9,8 @@ from tokamesh.geometry import build_edge_map
 class TriangularMesh(object):
     def __init__(self, R, z, triangles):
         """
-        Class for calculating geometry matrices over triangular meshes using
-        barycentric linear interpolation.
+        Class for performing operations with a triangular mesh, such as
+        interpolation and plotting.
 
         :param R: \
             The major radius of each mesh vertex as a 1D numpy array.
@@ -86,7 +86,7 @@ class TriangularMesh(object):
         points which lie outside the mesh will be assigned a value of zero.
 
         :param R: \
-            The major radius of each interpolation point as a 1D numpy array.
+            The major-radius of each interpolation point as a 1D numpy array.
 
         :param z: \
             The z-height of each interpolation point as a 1D numpy array.
@@ -159,7 +159,37 @@ class TriangularMesh(object):
             kwargs['color'] = 'black'
         ax.plot(self.R_edges.T, self.z_edges.T, **kwargs)
 
+    def get_field_image(self, vertex_values, shape=(150,150), pad_fraction=0.01):
+        """
+        Given the value of a field at each mesh vertex, use interpolation to generate
+        an image of the field across the whole mesh.
 
+        :param vertex_values: \
+            The value of the field being plotted at each vertex of the mesh as a 1D numpy array.
+
+        :param shape: \
+            A tuple of two integers specifying the dimensions of the image.
+
+        :param pad_fraction: \
+            The fraction of the mesh width/height used as padding to create a gap between
+            the edge of the mesh and the edge of the plot.
+
+        :return R_axis, z_axis, field_image: \
+            `R_axis` is a 1D array of the major-radius value of each column of the image array.
+            `z_axis` is a 1D array of the z-height value of each column of the image array.
+            `field_image` is a 2D array of the interpolated field values. Any points outside
+            the mesh are assigned a value of zero.
+        """
+        R_pad = (self.R_limits[1] - self.R_limits[0])*pad_fraction
+        z_pad = (self.R_limits[1] - self.R_limits[0])*pad_fraction
+
+        R_axis = linspace(self.R_limits[0]-R_pad, self.R_limits[1]+R_pad, shape[0])
+        z_axis = linspace(self.z_limits[0]-z_pad, self.z_limits[1]+z_pad, shape[1])
+        R_grid, z_grid = meshgrid(R_axis, z_axis)
+
+        image = self.interpolate(R_grid.flatten(), z_grid.flatten(), vertex_values=vertex_values)
+        image.resize((shape[1], shape[0]))
+        return R_axis, z_axis, image.T
 
 
 class BinaryTree:
