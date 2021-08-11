@@ -27,8 +27,8 @@ class BarycentricGeometryMatrix(object):
         of rays.
 
     :param ray_ends: \
-        The `(x,y,z)` position vectors of the end-points of each ray (i.e. line-of-sight) as
-        a 2D numpy array. The array must have shape `(M,3)` where `M` is the total number
+        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight) as
+        a 2D numpy array. The array must have shape ``(M,3)`` where `M` is the total number
         of rays.
     """
     def __init__(self, R, z, triangles, ray_origins, ray_ends):
