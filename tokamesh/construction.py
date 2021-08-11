@@ -10,10 +10,10 @@ def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pi
     Construct a mesh from equilateral triangles which fills a rectangular region.
 
     :param x_range: \
-        A tuple in the form `(x_min, x_max)` specifying the range of the x-axis to cover with triangles.
+        A tuple in the form ``(x_min, x_max)`` specifying the range of the x-axis to cover with triangles.
 
     :param y_range: \
-        A tuple in the form `(y_min, y_max)` specifying the range of the y-axis to cover with triangles.
+        A tuple in the form ``(y_min, y_max)`` specifying the range of the y-axis to cover with triangles.
 
     :param float scale: \
         The side-length of the triangles.
@@ -25,10 +25,10 @@ def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pi
         Pivot point around which the rotation is applied.
 
     :return x_vert, y_vert, triangles: \
-        `x_vert` is the x-position of the vertices as a 1D array. `y_vert` the is y-position
-        of the vertices as a 1D array. `triangles` is a 2D array of integers of shape `(N,3)`
+        ``x_vert`` is the x-position of the vertices as a 1D array. ``y_vert`` the is y-position
+        of the vertices as a 1D array. ``triangles`` is a 2D array of integers of shape ``(N,3)``
         specifying the indices of the vertices which form each triangle in the mesh, where
-        `N` is the total number of triangles.
+        ``N`` is the total number of triangles.
     """
     # determine how many rows / columns of triangles to create
     N = int(ceil((x_range[1] - x_range[0])/scale))
@@ -85,15 +85,15 @@ def trim_vertices(R, z, triangles, bools):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape (N,3) where 'N' is
-        the total number of triangles.
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where `'N'`
+        is the total number of triangles.
 
     :param bools: \
-        A 1D array of boolean values corresponding to the vertices, which is `True` for
+        A 1D array of boolean values corresponding to the vertices, which is ``True`` for
         any vertices which are to be removed from the mesh.
 
     :return R, z, triangles: \
-        The `R`, `z` and `triangles` arrays (defined as described above) with the
+        The ``R``, ``z`` and ``triangles`` arrays (defined as described above) with the
         specified vertices removed.
     """
     vert_inds = (~bools).nonzero()[0]
@@ -226,7 +226,7 @@ def find_boundaries(triangles):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
         the total number of triangles.
 
     :return: \
@@ -315,14 +315,14 @@ def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1.):
 
     :param padding_factor: \
         A multiplicative factor which defines the minimum distance to the boundary
-        such that `min_distance = padding_factor*scale`. No vertices in the returned
-        mesh will be closer to the boundary than `min_distance`.
+        such that ``min_distance = padding_factor*scale``. No vertices in the returned
+        mesh will be closer to the boundary than ``min_distance``.
 
     :return R_vert, z_vert, triangles: \
-        `R_vert` is the major-radius of the vertices as a 1D array. `z_vert` the is
-        z-height of the vertices as a 1D array. `triangles` is a 2D array of integers
-        of shape `(N,3)` specifying the indices of the vertices which form each triangle
-        in the mesh, where `N` is the total number of triangles.
+        ``R_vert`` is the major-radius of the vertices as a 1D array. ``z_vert`` the is
+        z-height of the vertices as a 1D array. ``triangles`` is a 2D array of integers
+        of shape ``(N,3)`` specifying the indices of the vertices which form each triangle
+        in the mesh, where ``N`` is the total number of triangles.
     """
     poly = Polygon(R_boundary, z_boundary)
 
