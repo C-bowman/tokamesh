@@ -15,3 +15,4 @@ or to request features/improvements.
 
    geometry
    construction
+   TriangularMesh

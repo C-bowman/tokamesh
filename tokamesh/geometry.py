@@ -18,12 +18,12 @@ class BarycentricGeometryMatrix(object):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
         the total number of triangles.
 
     :param ray_origins: \
-        The `(x,y,z)` position vectors of the origin of each ray (i.e. line-of-sight) as
-        a 2D numpy array. The array must have shape `(M,3)` where `M` is the total number
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight) as
+        a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the total number
         of rays.
 
     :param ray_ends: \
@@ -90,17 +90,17 @@ class BarycentricGeometryMatrix(object):
 
         :keyword str save_file: \
             A string specifying a file path to which the geometry matrix data will be saved
-            using the numpy '.npz' format. If not specified, the geometry matrix data is still
+            using the numpy ``.npz`` format. If not specified, the geometry matrix data is still
             returned as a dictionary, but is not saved.
 
-        :return dict matrix_data: \
+        :return matrix_data: \
             The Geometry matrix data as a dictionary of numpy arrays. The structure of the
-            dictionary is as follows: `entry_values` is a 1D numpy array containing the values
-            of all non-zero matrix entries. `row_indices` is a 1D numpy array containing the
-            row-index of the each of the non-zero entries. `col_indices` is a 1D numpy array
-            containing the row-index of the each of the non-zero entries. `shape` is a 1D
+            dictionary is as follows: ``entry_values`` is a 1D numpy array containing the values
+            of all non-zero matrix entries. ``row_indices`` is a 1D numpy array containing the
+            row-index of the each of the non-zero entries. ``col_indices`` is a 1D numpy array
+            containing the row-index of the each of the non-zero entries. ``shape`` is a 1D
             numpy array containing the dimensions of the matrix. The arrays defining
-            the mesh are also stored as `R`, `z` and `triangles`.
+            the mesh are also stored as ``R``, ``z`` and ``triangles``.
         """
         for i in range(self.n_triangles):
             self.process_triangle(i)

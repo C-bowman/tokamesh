@@ -4,20 +4,20 @@ def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
     Checks whether a given set of edges intersects a axis-aligned rectangle.
     :param R_lims: \
         A tuple specifying the major radius at the left and right sides of the
-        rectangle in the form `(R_left, R_right)`.
+        rectangle in the form ``(R_left, R_right)``.
 
     :param z_lims: \
         A tuple specifying the z-height at the bottom and top sides of the
-        rectangle in the form `(z_bottom, z_top)`.
+        rectangle in the form ``(z_bottom, z_top)``.
 
     :param R_edges: \
         A 2D numpy array specifying the major-radius value at the ends of each
-        edge. The array must have shape `(N,2)` where `N` is the total number
+        edge. The array must have shape ``(N,2)`` where ``N`` is the total number
         of edges.
 
     :param z_edges: \
         A 2D numpy array specifying the z-height value at the ends of each
-        edge. The array must have shape `(N,2)` where `N` is the total number
+        edge. The array must have shape ``(N,2)`` where ``N`` is the total number
         of edges.
 
     :return intersections: \

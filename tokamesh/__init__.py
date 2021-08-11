@@ -20,7 +20,7 @@ class TriangularMesh(object):
 
         :param triangles: \
             A 2D numpy array of integers specifying the indices of the vertices which form
-            each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
+            each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
             the total number of triangles.
         """
         self.R = R
@@ -190,6 +190,8 @@ class TriangularMesh(object):
         image = self.interpolate(R_grid.flatten(), z_grid.flatten(), vertex_values=vertex_values)
         image.resize((shape[1], shape[0]))
         return R_axis, z_axis, image.T
+
+
 
 
 class BinaryTree:

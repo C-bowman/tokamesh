@@ -1,4 +1,4 @@
 Mesh construction
 ~~~~~~~~~~~~~~~~~
 
-.. automodule:: tokamesh.geometry
+.. autofunction:: tokamesh.geometry.equilateral_mesh

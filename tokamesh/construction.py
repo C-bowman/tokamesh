@@ -85,7 +85,7 @@ def trim_vertices(R, z, triangles, bools):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape ``(N,3)`` where `'N'`
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N``
         is the total number of triangles.
 
     :param bools: \
