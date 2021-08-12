@@ -3,6 +3,8 @@ from numpy import sqrt, log, pi, tan, dot, cross, identity
 from numpy import absolute, nan, isfinite, minimum, maximum
 from numpy import array, ndarray, linspace, full, zeros, stack, savez, int64
 from collections import defaultdict
+from time import time
+import sys
 
 
 class BarycentricGeometryMatrix(object):
@@ -84,6 +86,46 @@ class BarycentricGeometryMatrix(object):
         self.lam1_coeffs = 0.5*stack([z2-z3, R3-R2, R2*z3 - R3*z2], axis=1) / self.area[:,None]
         self.lam2_coeffs = 0.5*stack([z3-z1, R1-R3, R3*z1 - R1*z3], axis=1) / self.area[:,None]
 
+    # def calculate(self, save_file=None):
+    #     """
+    #     Calculate the geometry matrix.
+    #
+    #     :keyword str save_file: \
+    #         A string specifying a file path to which the geometry matrix data will be saved
+    #         using the numpy ``.npz`` format. If not specified, the geometry matrix data is still
+    #         returned as a dictionary, but is not saved.
+    #
+    #     :return matrix_data: \
+    #         The Geometry matrix data as a dictionary of numpy arrays. The structure of the
+    #         dictionary is as follows: ``entry_values`` is a 1D numpy array containing the values
+    #         of all non-zero matrix entries. ``row_indices`` is a 1D numpy array containing the
+    #         row-index of the each of the non-zero entries. ``col_indices`` is a 1D numpy array
+    #         containing the row-index of the each of the non-zero entries. ``shape`` is a 1D
+    #         numpy array containing the dimensions of the matrix. The arrays defining
+    #         the mesh are also stored as ``R``, ``z`` and ``triangles``.
+    #     """
+    #     # clear the geometry factors in case it contains data from a previous calculation
+    #     self.GeomFacs.vertex_map.clear()
+    #     # calculate the contribution to the matrix for each triangle
+    #     [self.process_triangle(i) for i in range(self.n_triangles)]
+    #     data_vals, vertex_inds, ray_inds = self.GeomFacs.get_sparse_matrix_data()
+    #
+    #     data_dict = {
+    #         'entry_values': data_vals,
+    #         'row_indices': ray_inds,
+    #         'col_indices': vertex_inds,
+    #         'shape': array([self.n_rays, self.n_vertices]),
+    #         'R': self.R,
+    #         'z': self.z,
+    #         'triangles': self.triangle_vertices
+    #     }
+    #
+    #     # save the matrix data
+    #     if save_file is not None:
+    #         savez(save_file, **data_dict)
+    #
+    #     return data_dict
+
     def calculate(self, save_file=None):
         """
         Calculate the geometry matrix.
@@ -102,8 +144,42 @@ class BarycentricGeometryMatrix(object):
             numpy array containing the dimensions of the matrix. The arrays defining
             the mesh are also stored as ``R``, ``z`` and ``triangles``.
         """
-        for i in range(self.n_triangles):
-            self.process_triangle(i)
+        # clear the geometry factors in case they contains data from a previous calculation
+        self.GeomFacs.vertex_map.clear()
+        # process the first triangle so we can estimate the run-time
+        t_start = time()
+        self.process_triangle(0)
+        dt = time() - t_start
+
+        # use the estimate to break the evaluation into groups
+        group_size = max(int(1. / dt), 1)
+        rem = (self.n_triangles-1) % group_size
+        ranges = zip(range(1, self.n_triangles, group_size), range(1 + group_size, self.n_triangles, group_size))
+
+        # calculate the contribution to the matrix for each triangle
+        for start, end in ranges:
+            [self.process_triangle(i) for i in range(start, end)]
+
+            # print the progress
+            f_complete = (end+1)/self.n_triangles
+            eta = int((time() - t_start) * (1 - f_complete) / f_complete)
+            msg = '\r >> Calculating geometry matrix:  [ {:.1%} complete   ETA: {} sec ]           '.format(f_complete, eta)
+            sys.stdout.write(msg)
+            sys.stdout.flush()
+
+        # clean up any remaining triangles
+        if rem != 0:
+            [self.process_triangle(i) for i in range(self.n_triangles - rem, self.n_triangles)]
+
+        t_elapsed = time() - t_start
+        mins, secs = divmod(t_elapsed, 60)
+        hrs, mins = divmod(mins, 60)
+        time_taken = "%d:%02d:%02d" % (hrs, mins, secs)
+        sys.stdout.write('\r >> Calculating geometry matrix:  [ completed in {} sec ]           '.format(time_taken))
+        sys.stdout.flush()
+        sys.stdout.write('\n')
+
+        # convert the calculated matrix elements to a form appropriate for sparse matrices
         data_vals, vertex_inds, ray_inds = self.GeomFacs.get_sparse_matrix_data()
 
         data_dict = {
