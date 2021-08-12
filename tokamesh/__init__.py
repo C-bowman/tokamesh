@@ -7,22 +7,22 @@ from tokamesh.geometry import build_edge_map
 
 
 class TriangularMesh(object):
+    """
+    Class for performing operations with a triangular mesh, such as
+    interpolation and plotting.
+
+    :param R: \
+        The major radius of each mesh vertex as a 1D numpy array.
+
+    :param z: \
+        The z-height of each mesh vertex as a 1D numpy array.
+
+    :param triangles: \
+        A 2D numpy array of integers specifying the indices of the vertices which form
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
+        the total number of triangles.
+    """
     def __init__(self, R, z, triangles):
-        """
-        Class for performing operations with a triangular mesh, such as
-        interpolation and plotting.
-
-        :param R: \
-            The major radius of each mesh vertex as a 1D numpy array.
-
-        :param z: \
-            The z-height of each mesh vertex as a 1D numpy array.
-
-        :param triangles: \
-            A 2D numpy array of integers specifying the indices of the vertices which form
-            each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
-            the total number of triangles.
-        """
         self.R = R
         self.z = z
         self.triangle_vertices = triangles
@@ -175,9 +175,9 @@ class TriangularMesh(object):
             the edge of the mesh and the edge of the plot.
 
         :return R_axis, z_axis, field_image: \
-            `R_axis` is a 1D array of the major-radius value of each column of the image array.
-            `z_axis` is a 1D array of the z-height value of each column of the image array.
-            `field_image` is a 2D array of the interpolated field values. Any points outside
+            ``R_axis`` is a 1D array of the major-radius value of each column of the image array.
+            ``z_axis`` is a 1D array of the z-height value of each column of the image array.
+            ``field_image`` is a 2D array of the interpolated field values. Any points outside
             the mesh are assigned a value of zero.
         """
         R_pad = (self.R_limits[1] - self.R_limits[0])*pad_fraction

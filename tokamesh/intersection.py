@@ -2,6 +2,7 @@
 def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
     """
     Checks whether a given set of edges intersects a axis-aligned rectangle.
+
     :param R_lims: \
         A tuple specifying the major radius at the left and right sides of the
         rectangle in the form ``(R_left, R_right)``.

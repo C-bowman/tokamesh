@@ -1,4 +1,4 @@
-Mesh construction
-~~~~~~~~~~~~~~~~~
+Constructing triangular meshes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tokamesh.geometry.equilateral_mesh
+.. autofunction:: tokamesh.construction.equilateral_mesh
