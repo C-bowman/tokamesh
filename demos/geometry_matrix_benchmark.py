@@ -1,5 +1,5 @@
 
-from numpy import linspace, array, exp, zeros
+from numpy import linspace, array, zeros, sqrt, sinc
 from scipy.sparse import csc_matrix
 from numpy.random import multivariate_normal
 from scipy.integrate import simps
@@ -20,9 +20,10 @@ R, z, triangles = equilateral_mesh(scale=0.01, x_range=[0,0.2], y_range=[0,0.2])
 mesh = TriangularMesh(R, z, triangles)
 
 # generate a random test field using a gaussian process
-sigma = 0.02
-covar = exp(-0.5*((R[:,None] - R[None,:])**2 + (z[:,None] - z[None,:])**2)/sigma**2)
-field = multivariate_normal(zeros(R.size), covar)
+distance = sqrt((R[:,None] - R[None,:])**2 + (z[:,None] - z[None,:])**2)
+scale = 0.04
+covariance = sinc(distance/scale)**2
+field = multivariate_normal(zeros(R.size), covariance)
 field -= field.min()
 
 # Generate an image of the field on the mesh
@@ -89,15 +90,20 @@ ax1.set_xlim([-2,77])
 ax1.grid()
 ax1.legend()
 
+abs_frac_diff = abs(matrix_integrals/direct_integrals-1)
+mean_afd = abs_frac_diff.mean()
 ax2 = fig.add_subplot(212)
-ax2.plot(abs(matrix_integrals/direct_integrals-1), '.-', c='green')
-ax2.plot([-2,77], [0,0], lw=2, c='black', ls='dashed')
+ax2.plot(abs_frac_diff, c='green', alpha=0.5)
+ax2.plot(abs_frac_diff, '.', c='green', markersize=4)
+ax2.plot([-10, 85], [mean_afd, mean_afd], ls='dashed', c='red', lw=2,
+         label='{:.3%} mean absolute fractional difference'.format(mean_afd))
 ax2.set_ylim([1e-5,1e-2])
 ax2.set_yscale('log')
-ax2.set_xlim([-2,77])
+ax2.set_xlim([-1,75])
 ax2.set_xlabel('Pixel-ray number')
 ax2.set_ylabel('absolute fractional difference')
 ax2.grid()
+ax2.legend()
 
 plt.tight_layout()
 plt.show()
