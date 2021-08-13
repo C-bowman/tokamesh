@@ -1,6 +1,6 @@
 
 from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique
-from numpy import array, zeros, linspace, arange, int64, concatenate, atleast_1d
+from numpy import array, zeros, linspace, arange, int64, concatenate, atleast_1d, intersect1d
 from warnings import warn
 from tokamesh.geometry import build_edge_map
 
@@ -335,3 +335,111 @@ def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1.):
     bools = array([poly.is_inside(p)*poly.distance(p) < scale*padding_factor for p in zip(R,z)])
 
     return trim_vertices(R, z, triangles, bools)
+
+
+
+
+def refine_mesh(R, z, triangles, refinement_inds):
+    """
+    Refine a mesh by partitioning specified triangles into 4 sub-triangles.
+    Triangles sharing one or more edges with those being refined will also
+    be partitioned in such a way to ensure the resulting mesh is valid.
+
+    :param R: \
+        The major radius of each mesh vertex as a 1D numpy array.
+
+    :param z: \
+        The z-height of each mesh vertex as a 1D numpy array.
+
+    :param triangles: \
+        A 2D numpy array of integers specifying the indices of the vertices which form
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N``
+        is the total number of triangles.
+
+    :param refinement_inds: \
+        A list or array specifying the indices of the triangles to be refined.
+
+    :return R, z, triangles: \
+        The ``R``, ``z`` and ``triangles`` arrays (defined as described above) for the
+        refined mesh.
+    """
+    # build a set as we'll be performing membership checks
+    refine_set = {i for i in refinement_inds}
+
+    # get the edge mapping data
+    triangle_edges, edge_vertices, edge_to_triangles = build_edge_map(triangles)
+
+    new_mesh_triangles = []
+    for t in range(triangles.shape[0]):
+        # for the current triangle, find which of its neighbours are being refined
+        refined_neighbours = []
+        for edge in triangle_edges[t,:]:
+            refined_neighbours.extend([i for i in edge_to_triangles[edge] if i != t and i in refine_set])
+
+        vertices = [(R[i], z[i]) for i in triangles[t,:]]
+
+        # if either the triangle itself, or all of its neighbours, are being refined, it must be quadrisected
+        if t in refine_set or len(refined_neighbours) == 3:
+            v1, v2, v3 = vertices
+            # get the mid-point of each side
+            m12 = (0.5*(v1[0] + v2[0]), 0.5*(v1[1] + v2[1]))
+            m23 = (0.5*(v2[0] + v3[0]), 0.5*(v2[1] + v3[1]))
+            m31 = (0.5*(v3[0] + v1[0]), 0.5*(v3[1] + v1[1]))
+            # add the new triangles
+            new_mesh_triangles.extend([[v1, m12, m31], [v2, m12, m23], [v3, m23, m31], [m12, m23, m31]])
+
+        # if no neighbours are being refined, the triangle remains unchanged
+        elif len(refined_neighbours) == 0:
+            new_mesh_triangles.append(vertices)
+
+        # if the triangle has two refined neighbours, it must be trisected
+        elif len(refined_neighbours) == 2:
+            # first we need to find the two edges shared with the neighbours
+            shared_edges = [intersect1d(triangle_edges[k,:], triangle_edges[t,:]) for k in refined_neighbours]
+
+            # now find the point that these two edges share
+            shared_vertex_index = intersect1d(*[edge_vertices[k,:] for k in shared_edges])
+            shared_vertex = (R[shared_vertex_index[0]], z[shared_vertex_index[0]])
+
+            # get the two points which are not shared
+            v1, v2 = [v for v in vertices if v != shared_vertex]
+
+            # get the mid points of the shared sides
+            midpoint_1 = (0.5*(v1[0]+shared_vertex[0]), 0.5*(v1[1]+shared_vertex[1]))
+            midpoint_2 = (0.5*(v2[0]+shared_vertex[0]), 0.5*(v2[1]+shared_vertex[1]))
+
+            # add the new triangles
+            new_mesh_triangles.append([midpoint_1, midpoint_2, shared_vertex])
+            new_mesh_triangles.append([midpoint_1, v1, v2])
+            new_mesh_triangles.append([midpoint_1, midpoint_2, v2])
+
+        # if the triangle has one refined neighbour, it must be bisected
+        elif len(refined_neighbours) == 1:
+            # find the shared edge
+            shared_edge = intersect1d(triangle_edges[refined_neighbours[0],:], triangle_edges[t,:])
+
+            # get the vertices of the shared edge
+            v1, v2 = [(R[i], z[i]) for i in edge_vertices[shared_edge,:].squeeze()]
+
+            # get the remaining vertex
+            v3 = [v for v in vertices if v not in [v1, v2]][0]
+
+            # get the midpoint of the shared edge
+            midpoint = (0.5*(v1[0]+v2[0]), 0.5*(v1[1]+v2[1]))
+            new_mesh_triangles.extend([[midpoint, v3, v1], [midpoint, v3, v2]])
+        else:
+            raise ValueError('more than 3 refined neighbours detected')
+
+    # number all the vertices
+    vertex_map = {}
+    for vertices in new_mesh_triangles:
+        for vertex in vertices:
+            if vertex not in vertex_map:
+                vertex_map[vertex] = len(vertex_map)
+
+    # build the mesh data arrays
+    new_R = array([v[0] for v in vertex_map.keys()])
+    new_z = array([v[1] for v in vertex_map.keys()])
+    new_triangles = array([[vertex_map[v] for v in verts] for verts in new_mesh_triangles], dtype=int64)
+
+    return new_R, new_z, new_triangles
