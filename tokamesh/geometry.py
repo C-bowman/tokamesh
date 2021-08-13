@@ -30,7 +30,7 @@ class BarycentricGeometryMatrix(object):
 
     :param ray_ends: \
         The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight) as
-        a 2D numpy array. The array must have shape ``(M,3)`` where `M` is the total number
+        a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the total number
         of rays.
     """
     def __init__(self, R, z, triangles, ray_origins, ray_ends):
@@ -65,7 +65,7 @@ class BarycentricGeometryMatrix(object):
         self.m = self.rays[:,2] / sqrt(self.q2)  # gradient of the hyperbola asymptote line
 
         # Construct a mapping from triangles to edges, and edges to vertices
-        self.triangle_edges, self.edge_vertices = build_edge_map(self.triangle_vertices)
+        self.triangle_edges, self.edge_vertices, _ = build_edge_map(self.triangle_vertices)
         self.R_edges = self.R[self.edge_vertices]
         self.z_edges = self.z[self.edge_vertices]
         self.n_edges = self.edge_vertices.shape[0]
@@ -85,46 +85,6 @@ class BarycentricGeometryMatrix(object):
         self.area = 0.5*((z2 - z3)*(R1 - R3) + (R3 - R2)*(z1 - z3))
         self.lam1_coeffs = 0.5*stack([z2-z3, R3-R2, R2*z3 - R3*z2], axis=1) / self.area[:,None]
         self.lam2_coeffs = 0.5*stack([z3-z1, R1-R3, R3*z1 - R1*z3], axis=1) / self.area[:,None]
-
-    # def calculate(self, save_file=None):
-    #     """
-    #     Calculate the geometry matrix.
-    #
-    #     :keyword str save_file: \
-    #         A string specifying a file path to which the geometry matrix data will be saved
-    #         using the numpy ``.npz`` format. If not specified, the geometry matrix data is still
-    #         returned as a dictionary, but is not saved.
-    #
-    #     :return matrix_data: \
-    #         The Geometry matrix data as a dictionary of numpy arrays. The structure of the
-    #         dictionary is as follows: ``entry_values`` is a 1D numpy array containing the values
-    #         of all non-zero matrix entries. ``row_indices`` is a 1D numpy array containing the
-    #         row-index of the each of the non-zero entries. ``col_indices`` is a 1D numpy array
-    #         containing the row-index of the each of the non-zero entries. ``shape`` is a 1D
-    #         numpy array containing the dimensions of the matrix. The arrays defining
-    #         the mesh are also stored as ``R``, ``z`` and ``triangles``.
-    #     """
-    #     # clear the geometry factors in case it contains data from a previous calculation
-    #     self.GeomFacs.vertex_map.clear()
-    #     # calculate the contribution to the matrix for each triangle
-    #     [self.process_triangle(i) for i in range(self.n_triangles)]
-    #     data_vals, vertex_inds, ray_inds = self.GeomFacs.get_sparse_matrix_data()
-    #
-    #     data_dict = {
-    #         'entry_values': data_vals,
-    #         'row_indices': ray_inds,
-    #         'col_indices': vertex_inds,
-    #         'shape': array([self.n_rays, self.n_vertices]),
-    #         'R': self.R,
-    #         'z': self.z,
-    #         'triangles': self.triangle_vertices
-    #     }
-    #
-    #     # save the matrix data
-    #     if save_file is not None:
-    #         savez(save_file, **data_dict)
-    #
-    #     return data_dict
 
     def calculate(self, save_file=None):
         """
@@ -413,25 +373,34 @@ def build_edge_map(triangles):
         each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
         the total number of triangles.
 
-    :return triangle_edges, edge_vertices:
+    :return: \
+        A tuple containing ``triangle_edges``, ``edge_vertices`` and ``edge_map``.
+        ``triangle_edges`` specifies the indices of the edges which make up each
+        triangle as a 2D numpy array of shape``(N,3)`` where ``N`` is the total
+        number of triangles. ``edge_vertices`` specifies the indices of the vertices
+        which make up each edge as a 2D numpy array of shape``(M,2)`` where ``M``
+        is the total number of edges. ``edge_map`` is a dictionary mapping the index
+        of an edge to the indices of the triangles to which it belongs.
     """
     n_triangles = triangles.shape[0]
     triangle_edges = zeros([n_triangles,3], dtype=int64)
-    edge_dict = {}
+    edge_indices = {}
+    edge_map = defaultdict(list)
     for i in range(n_triangles):
         s1 = (triangles[i,0], triangles[i,1])
         s2 = (triangles[i,1], triangles[i,2])
         s3 = (triangles[i,0], triangles[i,2])
         for j, edge in enumerate([s1, s2, s3]):
-            if edge not in edge_dict:
-                edge_dict[edge] = len(edge_dict)
-            triangle_edges[i,j] = edge_dict[edge]
+            if edge not in edge_indices:
+                edge_indices[edge] = len(edge_indices)
+            triangle_edges[i,j] = edge_indices[edge]
+            edge_map[edge_indices[edge]].append(i)
 
-    edge_vertices = zeros([len(edge_dict), 2], dtype=int64)
-    for edge, i in edge_dict.items():
+    edge_vertices = zeros([len(edge_indices), 2], dtype=int64)
+    for edge, i in edge_indices.items():
         edge_vertices[i,:] = [edge[0], edge[1]]
 
-    return triangle_edges, edge_vertices
+    return triangle_edges, edge_vertices, edge_map
 
 
 
