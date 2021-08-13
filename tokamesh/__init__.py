@@ -37,7 +37,7 @@ class TriangularMesh(object):
         self.lam2_coeffs = 0.5*stack([z3-z1, R1-R3, R3*z1 - R1*z3], axis=1) / self.area[:,None]
 
         # Construct a mapping from triangles to edges, and edges to vertices
-        self.triangle_edges, self.edge_vertices = build_edge_map(self.triangle_vertices)
+        self.triangle_edges, self.edge_vertices, _ = build_edge_map(self.triangle_vertices)
         self.R_edges = self.R[self.edge_vertices]
         self.z_edges = self.z[self.edge_vertices]
         self.n_edges = self.edge_vertices.shape[0]

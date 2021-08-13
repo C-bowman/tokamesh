@@ -24,7 +24,8 @@ def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pi
     :param pivot: \
         Pivot point around which the rotation is applied.
 
-    :return x_vert, y_vert, triangles: \
+    :return: \
+        A tuple containing ``x_vert``, ``y_vert`` and ``triangles``.
         ``x_vert`` is the x-position of the vertices as a 1D array. ``y_vert`` the is y-position
         of the vertices as a 1D array. ``triangles`` is a 2D array of integers of shape ``(N,3)``
         specifying the indices of the vertices which form each triangle in the mesh, where
@@ -318,7 +319,8 @@ def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1.):
         such that ``min_distance = padding_factor*scale``. No vertices in the returned
         mesh will be closer to the boundary than ``min_distance``.
 
-    :return R_vert, z_vert, triangles: \
+    :return: \
+        A tuple containing ``R_vert``, ``z_vert`` and ``triangles``.
         ``R_vert`` is the major-radius of the vertices as a 1D array. ``z_vert`` the is
         z-height of the vertices as a 1D array. ``triangles`` is a 2D array of integers
         of shape ``(N,3)`` specifying the indices of the vertices which form each triangle
