@@ -1,8 +1,12 @@
 
-from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique
-from numpy import array, zeros, linspace, arange, int64, concatenate, atleast_1d, intersect1d
+from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique, isclose
+from numpy import array, ones, zeros, linspace, arange, int64, concatenate, atleast_1d, intersect1d
+import matplotlib.pyplot as plt
 from warnings import warn
+
 from tokamesh.geometry import build_edge_map
+from tokamesh.triangle import run_triangle
+from tokamesh import TriangularMesh
 
 
 def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pivot=(0,0)):
@@ -48,10 +52,7 @@ def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pi
 
     # rotate the vertices around a point if requested
     if rotation is not None:
-        R = sqrt((x-pivot[0])**2 + (y-pivot[1])**2)
-        theta = arctan2(y-pivot[1], x-pivot[0]) + rotation
-        x = R*cos(theta) + pivot[0]
-        y = R*sin(theta) + pivot[1]
+        x, y = rotate(x, y, rotation, pivot)
 
     # divide up the grid into triangles
     triangle_inds = []
@@ -70,6 +71,14 @@ def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pi
                 triangle_inds.append([v1, v2, v4])
 
     return x.flatten(), y.flatten(), array(triangle_inds)
+
+
+
+
+def rotate(R, z, angle, pivot):
+    d = sqrt((R - pivot[0])**2 + (z - pivot[1])**2)
+    theta = arctan2(z - pivot[1], R - pivot[0]) + angle
+    return d*cos(theta) + pivot[0], d*sin(theta) + pivot[1]
 
 
 
@@ -234,7 +243,7 @@ def find_boundaries(triangles):
         A list of 1D numpy arrays containing the indices of the vertices in each boundary.
     """
     # Construct a mapping from triangles to edges, and edges to vertices
-    triangle_edges, edge_vertices = build_edge_map(triangles)
+    triangle_edges, edge_vertices, _ = build_edge_map(triangles)
     # identify edges on the boundary by finding edges which are only part of one triangle
     unique_vals, counts = unique(triangle_edges, return_counts=True)
     boundary_edges_indices = (counts == 1).nonzero()[0]
@@ -300,7 +309,7 @@ def find_boundaries(triangles):
 
 
 
-def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1.):
+def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1., rotation=None):
     """
     Generate an equilateral mesh which fills the space inside a given boundary,
     up to a chosen distance to the boundary edge.
@@ -327,11 +336,17 @@ def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1.):
         in the mesh, where ``N`` is the total number of triangles.
     """
     poly = Polygon(R_boundary, z_boundary)
-
-    r_range = (min(R_boundary) - 3 * scale, max(R_boundary) + 3 * scale)
-    z_range = (min(z_boundary)-3*scale, max(z_boundary)+3*scale)
-
-    R, z, triangles = equilateral_mesh(x_range=r_range, y_range=z_range, scale=scale)
+    pad = 2*0.5*sqrt(3)
+    if rotation is None:
+        R_range = (R_boundary.min() - pad, R_boundary.max() + pad)
+        z_range = (z_boundary.min() - pad, z_boundary.max() + pad)
+        R, z, triangles = equilateral_mesh(x_range=R_range, y_range=z_range, scale=scale)
+    else:
+        rot_R, rot_z = rotate(R_boundary, z_boundary, -rotation, [0., 0.])
+        R_range = (rot_R.min() - pad, rot_R.max() + pad)
+        z_range = (rot_z.min() - pad, rot_z.max() + pad)
+        R, z, triangles = equilateral_mesh(x_range=R_range, y_range=z_range, scale=scale)
+        R, z = rotate(R, z, rotation, [0., 0.])
 
     # remove all triangles which are too close too or inside walls
     bools = array([poly.is_inside(p)*poly.distance(p) < scale*padding_factor for p in zip(R,z)])
@@ -445,3 +460,93 @@ def refine_mesh(R, z, triangles, refinement_inds):
     new_triangles = array([[vertex_map[v] for v in verts] for verts in new_mesh_triangles], dtype=int64)
 
     return new_R, new_z, new_triangles
+
+
+
+
+def remove_duplicate_vertices(R, z, triangles):
+    R2 = R.copy()
+    z2 = z.copy()
+    # first, find duplicate vertices (including those which differ only by numerical error)
+    not_duplicates = ones(R2.size, dtype=bool)
+    indices = arange(R2.size, dtype=int64)
+    for i in range(R2.size-1):
+        bools = isclose(R2[i+1:], R2[i]) & isclose(z2[i+1:], z2[i]) & not_duplicates[i+1:]
+        if bools.any():
+            R2[i+1:][bools] = R2[i]
+            z2[i+1:][bools] = z2[i]
+            not_duplicates[i+1:] &= (~bools)
+            indices[i+1:][bools] = i
+
+    # build a new mesh out of the unique vertices
+    unique_vals, inverse = unique(indices, return_inverse=True)
+    new_R = R[unique_vals]
+    new_z = z[unique_vals]
+    new_triangles = inverse[triangles]
+
+    # check if any of the triangles are now duplicates remove them
+    new_triangles = unique(new_triangles, axis=0)
+    return new_R, new_z, new_triangles
+
+
+
+
+def mesh_generator(R_wall, z_wall, resolution=0.03, edge_resolution=None, edge_padding=0.75,
+                   edge_max_area=0.9, rotation=None, boundary_plot=False):
+
+    # build the central mesh
+    print(' # Constructing central mesh...')
+    central_R, central_z, central_triangles = build_central_mesh(
+        R_boundary=R_wall,
+        z_boundary=z_wall,
+        scale=resolution,
+        padding_factor=edge_padding,
+        rotation=rotation
+    )
+
+    # now construct the boundary for the central mesh
+    print(' # Finding central mesh boundary...')
+    boundaries = find_boundaries(central_triangles)
+    # if there are multiple boundaries, sort them by length
+    if len(boundaries) > 1:
+        boundaries = sorted(boundaries, key=lambda x: len(x))
+    central_boundary = boundaries[-1]
+    central_boundary = concatenate([central_boundary, atleast_1d(central_boundary[0])])
+
+    if boundary_plot:
+        plt.plot(R_wall, z_wall, '.-')
+        for b in boundaries:
+            plt.plot(central_R[b], central_z[b], '.-', lw=3)
+
+        mesh = TriangularMesh(central_R, central_z, central_triangles)
+        mesh.draw(plt)
+        plt.axis('equal')
+        plt.show()
+
+    # now we have the boundary, we can build the edge mesh using triangle.
+    # prepare triangle inputs:
+    if edge_resolution is None:
+        edge_resolution = resolution
+    eq_area = (edge_resolution**2) * 0.25 * sqrt(3)
+    area_multiplier = edge_max_area
+
+    outer = (R_wall, z_wall)
+    inner = (central_R[central_boundary], central_z[central_boundary])
+    voids = [[inner[0].mean()], [inner[1].mean()]]
+
+    # run triangle using the python wrapper
+    print(' # Constructing edge mesh...')
+    edge_R, edge_z, edge_triangles = run_triangle(
+        outer_boundary=outer,
+        inner_boundary=inner,
+        void_markers=voids,
+        max_area=eq_area*area_multiplier)
+
+    # combine the central and edge meshes
+    print(' # Merging edge and central meshes...')
+    R = concatenate([central_R, edge_R])
+    z = concatenate([central_z, edge_z])
+    triangles = concatenate([central_triangles, edge_triangles + central_R.size], axis=0)
+    R, z, triangles = remove_duplicate_vertices(R, z, triangles)
+
+    return R, z, triangles
