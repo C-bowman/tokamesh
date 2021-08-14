@@ -29,7 +29,7 @@ def run_triangle(outer_boundary=None, inner_boundary=None, void_markers=None, ma
             # if it does exist, try to compile using gcc
             subprocess.call('gcc -O -o ' + triangle_dir + 'triangle ' + triangle_dir + 'triangle.c -lm', shell=True)
 
-    inputfile = 'tri_input'
+    inputfile = triangle_dir + 'tri_input'
 
     # extract wall data
     wall_r = outer_boundary[0]
@@ -108,7 +108,6 @@ def run_triangle(outer_boundary=None, inner_boundary=None, void_markers=None, ma
     tri_y = nodes[:, 2]
     tri_nodes = elements[:, 1:4] - 1
 
-
     # After reading the data back in from triangle, exact numeric value of
     # vertices can be changed via truncation. Due to this, we may need to
     # adjust their value to match the existing central mesh edge vertices.
@@ -128,7 +127,9 @@ def run_triangle(outer_boundary=None, inner_boundary=None, void_markers=None, ma
     return tri_x, tri_y, tri_nodes
 
 
-def read_triangle_output(directory = None, inputfile = 'tri_input'):
+
+
+def read_triangle_output(directory=None, inputfile='tri_input'):
     elefile = inputfile + '.1.ele'
     nodefile = inputfile + '.1.node'
 
