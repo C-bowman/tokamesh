@@ -9,10 +9,13 @@ fusion-energy devices such as [MAST-U](https://ccfe.ukaea.uk/research/mast-upgra
    - Tokamesh constructs geometry matrices using barycentric linear-interpolation rather
      than the typical zeroth-order interpolation. This allows for accurate tomographic
      inversions with a significantly lower number of basis functions.
+     <p style="text-align:center;"><img width="1000" alt="4" src="https://i.imgur.com/O6HQype.png"></p>
+     <br>
  - **Tomography-optimised mesh construction**
    - Tokamesh provides tools to create meshes that are optimised for tomography problems,
      e.g. local-refinement of triangles to increase mesh density in areas where it is
      needed without greatly increasing the size of the mesh.
-   
+   <p style="text-align:center;"><img width="800" alt="4" src="https://i.imgur.com/lbdZJbY.png"></p>
+
 ### Documentation
 ReadTheDocs site coming soon!
