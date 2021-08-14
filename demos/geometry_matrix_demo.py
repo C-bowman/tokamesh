@@ -11,7 +11,7 @@ from tokamesh.geometry import BarycentricGeometryMatrix, Camera
 R, z, triangles = equilateral_mesh(
     x_range=(0.3,1.5),
     y_range=(-0.5,0.5),
-    scale=0.04
+    scale=0.03
 )
 
 # define a test function which sets the emission value in (R,z)
@@ -58,13 +58,11 @@ brightness_image = pixel_brightness.reshape([pixels,pixels])
 
 # plot the predicted image
 fig = plt.figure(figsize=(9,4))
-
 # get an image of the emission on the mesh
 mesh = TriangularMesh(R=R, z=z, triangles=triangles)
 emission_R, emission_z, emission_image = mesh.get_field_image(vertex_values=emission)
 ax1 = fig.add_subplot(121)
 ax1.contourf(emission_R, emission_z, emission_image.T, 100)
-mesh.draw(ax1, c='white', lw=0.5)
 ax1.set_title('Example emission function on the mesh')
 ax1.set_xlabel('major radius (m)')
 ax1.set_ylabel('z-height (m)')
