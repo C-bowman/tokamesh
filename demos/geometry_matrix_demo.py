@@ -57,7 +57,7 @@ pixel_brightness = G.dot(emission)
 brightness_image = pixel_brightness.reshape([pixels,pixels])
 
 # plot the predicted image
-fig = plt.figure(figsize=(12,6))
+fig = plt.figure(figsize=(9,4))
 
 # get an image of the emission on the mesh
 mesh = TriangularMesh(R=R, z=z, triangles=triangles)
@@ -65,14 +65,14 @@ emission_R, emission_z, emission_image = mesh.get_field_image(vertex_values=emis
 ax1 = fig.add_subplot(121)
 ax1.contourf(emission_R, emission_z, emission_image.T, 100)
 mesh.draw(ax1, c='white', lw=0.5)
-ax1.set_title('Emission function on the mesh')
+ax1.set_title('Example emission function on the mesh')
 ax1.set_xlabel('major radius (m)')
 ax1.set_ylabel('z-height (m)')
 
 ax2 = fig.add_subplot(122)
 ax2.imshow(brightness_image.T)
 ax2.axis('equal')
-ax2.set_title('Camera image prediction from geometry matrix')
+ax2.set_title('Camera image prediction')
 ax2.axis('off')
 
 plt.tight_layout()
