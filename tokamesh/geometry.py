@@ -99,8 +99,8 @@ class BarycentricGeometryMatrix(object):
             The geometry matrix data as a dictionary of numpy arrays. The structure of the
             dictionary is as follows: ``entry_values`` is a 1D numpy array containing the values
             of all non-zero matrix entries. ``row_indices`` is a 1D numpy array containing the
-            row-index of the each of the non-zero entries. ``col_indices`` is a 1D numpy array
-            containing the column-index of the each of the non-zero entries. ``shape`` is a 1D
+            row-index of each of the non-zero entries. ``col_indices`` is a 1D numpy array
+            containing the column-index of each of the non-zero entries. ``shape`` is a 1D
             numpy array containing the dimensions of the matrix. The arrays defining
             the mesh are also stored as ``R``, ``z`` and ``triangles``.
         """

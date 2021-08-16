@@ -145,14 +145,14 @@ class TriangularMesh(object):
 
     def draw(self, ax, **kwargs):
         """
-        Draw the mesh using a given matplotlib.pyplot axis object.
+        Draw the mesh using a given ``matplotlib.pyplot`` axis object.
 
         :param ax: \
-            A matplotlib.pyplot axis object on which the mesh will be drawn by
+            A ``matplotlib.pyplot`` axis object on which the mesh will be drawn by
             calling the 'plot' method of the object.
 
         :param kwargs: \
-            Any valid keyword argument of matplotlib.pyplot.plot may be given in
+            Any valid keyword argument of ``matplotlib.pyplot.plot`` may be given in
             order to change the properties of the plot.
         """
         if ('color' not in kwargs) and ('c' not in kwargs):

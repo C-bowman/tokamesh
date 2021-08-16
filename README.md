@@ -18,4 +18,4 @@ fusion-energy devices such as [MAST-U](https://ccfe.ukaea.uk/research/mast-upgra
      ![Example mesh](https://i.imgur.com/lNGVnaY.png)
    
 ### Documentation
-ReadTheDocs site coming soon!
+The package documentation is available at [tokamesh.readthedocs.io](https://tokamesh.readthedocs.io/en/latest/).

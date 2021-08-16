@@ -1,8 +1,5 @@
 Tokamesh
 ========
-
-Introduction
-------------
 Tokamesh is a Python package which provides tools for constructing meshes and geometry matrices
 used in tomographic inversion problems in toroidal fusion-energy devices.
 

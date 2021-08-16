@@ -503,11 +503,11 @@ def remove_duplicate_vertices(R, z, triangles):
 def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None, edge_padding=0.75,
                    edge_max_area=1.1, rotation=None):
     """
-    Generate a triangular mesh which fills the space inside a given boundary, using a 2-stage
-    process. First, a mesh of equilateral triangles is created which fills the space inside
-    the boundary, up to a chosen minimum distance from the boundary. An irregular mesh is then
-    generated which fills the space between the central equilateral mesh and the boundary. The
-    two meshes are then merged, and the resulting mesh is returned.
+    Generate a triangular mesh which fills the space inside a given boundary using a 2-stage
+    process. First, a mesh of equilateral triangles is created which fills the space up to a
+    chosen minimum distance from the boundary. An irregular mesh is then generated which fills
+    the space between the central equilateral mesh and the boundary. The two meshes are then
+    merged, and the resulting mesh is returned.
 
     :param R_boundary: \
         The major-radius values of the boundary as a 1D numpy array.
@@ -537,7 +537,7 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
         ``edge_max_area`` times the target area set by the ``edge_resolution`` argument.
 
     :param rotation: \
-        Angle (in radians) by which the orientations of triangles inb the central
+        Angle (in radians) by which the orientations of triangles in the central
         equilateral mesh are rotated, relative to their default orientation.
 
     :return: \
