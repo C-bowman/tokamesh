@@ -1,25 +1,23 @@
 
 from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique, isclose
 from numpy import array, ones, zeros, linspace, arange, int64, concatenate, atleast_1d, intersect1d
-import matplotlib.pyplot as plt
 from warnings import warn
 
 from tokamesh.geometry import build_edge_map
 from tokamesh.triangle import run_triangle
-from tokamesh import TriangularMesh
 
 
-def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pivot=(0,0)):
+def equilateral_mesh(R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=None, pivot=(0, 0)):
     """
     Construct a mesh from equilateral triangles which fills a rectangular region.
 
-    :param x_range: \
-        A tuple in the form ``(x_min, x_max)`` specifying the range of the x-axis to cover with triangles.
+    :param R_range: \
+        A tuple in the form ``(R_min, R_max)`` specifying the range of major radius values to cover with triangles.
 
-    :param y_range: \
-        A tuple in the form ``(y_min, y_max)`` specifying the range of the y-axis to cover with triangles.
+    :param z_range: \
+        A tuple in the form ``(z_min, z_max)`` specifying the range of z-height values to cover with triangles.
 
-    :param float scale: \
+    :param float resolution: \
         The side-length of the triangles.
 
     :param rotation: \
@@ -29,26 +27,26 @@ def equilateral_mesh(x_range=(0,10), y_range=(0,5), scale=1.0, rotation=None, pi
         Pivot point around which the rotation is applied.
 
     :return: \
-        A tuple containing ``x_vert``, ``y_vert`` and ``triangles``.
-        ``x_vert`` is the x-position of the vertices as a 1D array. ``y_vert`` the is y-position
+        A tuple containing ``R_vert``, ``z_vert`` and ``triangles``.
+        ``R_vert`` is the major radius of the vertices as a 1D array. ``z_vert`` the is z-height
         of the vertices as a 1D array. ``triangles`` is a 2D array of integers of shape ``(N,3)``
         specifying the indices of the vertices which form each triangle in the mesh, where
         ``N`` is the total number of triangles.
     """
     # determine how many rows / columns of triangles to create
-    N = int(ceil((x_range[1] - x_range[0])/scale))
-    M = int(ceil((y_range[1] - y_range[0])/(scale*0.5*sqrt(3))))
+    N = int(ceil((R_range[1] - R_range[0]) / resolution))
+    M = int(ceil((z_range[1] - z_range[0]) / (resolution * 0.5 * sqrt(3))))
 
     # create the vertices by producing a rectangular grid
     # and shifting every other row
-    x_ax = linspace(0, N-1, N)*scale
-    y_ax = linspace(0, M-1, M)*scale*0.5*sqrt(3)
+    x_ax = linspace(0, N-1, N) * resolution
+    y_ax = linspace(0, M-1, M) * resolution * 0.5 * sqrt(3)
 
     x = zeros([N,M])
     y = zeros([N,M])
-    y[:,:] = y_ax[None,:] + y_range[0]
-    x[:,:] = x_ax[:,None] + x_range[0]
-    x[:,1::2] += 0.5*scale
+    y[:,:] = y_ax[None,:] + z_range[0]
+    x[:,:] = x_ax[:,None] + R_range[0]
+    x[:,1::2] += 0.5 * resolution
 
     # rotate the vertices around a point if requested
     if rotation is not None:
@@ -311,7 +309,7 @@ def find_boundaries(triangles):
 
 
 
-def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1., rotation=None):
+def build_central_mesh(R_boundary, z_boundary, resolution, padding_factor=1., rotation=None):
     """
     Generate an equilateral mesh which fills the space inside a given boundary,
     up to a chosen distance to the boundary edge.
@@ -322,13 +320,17 @@ def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1., rotatio
     :param z_boundary: \
         The z-height values of the boundary as a 1D numpy array.
 
-    :param scale: \
+    :param resolution: \
         The side-length of the equilateral triangles.
 
     :param padding_factor: \
         A multiplicative factor which defines the minimum distance to the boundary
         such that ``min_distance = padding_factor*scale``. No vertices in the returned
         mesh will be closer to the boundary than ``min_distance``.
+
+    :param rotation: \
+        Angle (in radians) by which the orientations of mesh triangles are rotated,
+        relative to their default orientation.
 
     :return: \
         A tuple containing ``R_vert``, ``z_vert`` and ``triangles``.
@@ -342,16 +344,16 @@ def build_central_mesh(R_boundary, z_boundary, scale, padding_factor=1., rotatio
     if rotation is None:
         R_range = (R_boundary.min() - pad, R_boundary.max() + pad)
         z_range = (z_boundary.min() - pad, z_boundary.max() + pad)
-        R, z, triangles = equilateral_mesh(x_range=R_range, y_range=z_range, scale=scale)
+        R, z, triangles = equilateral_mesh(R_range=R_range, z_range=z_range, resolution=resolution)
     else:
         rot_R, rot_z = rotate(R_boundary, z_boundary, -rotation, [0., 0.])
         R_range = (rot_R.min() - pad, rot_R.max() + pad)
         z_range = (rot_z.min() - pad, rot_z.max() + pad)
-        R, z, triangles = equilateral_mesh(x_range=R_range, y_range=z_range, scale=scale)
+        R, z, triangles = equilateral_mesh(R_range=R_range, z_range=z_range, resolution=resolution)
         R, z = rotate(R, z, rotation, [0., 0.])
 
     # remove all triangles which are too close too or inside walls
-    bools = array([poly.is_inside(p)*poly.distance(p) < scale*padding_factor for p in zip(R,z)])
+    bools = array([poly.is_inside(p) * poly.distance(p) < resolution * padding_factor for p in zip(R, z)])
 
     return trim_vertices(R, z, triangles, bools)
 
@@ -488,20 +490,65 @@ def remove_duplicate_vertices(R, z, triangles):
 
     # check if any of the triangles are now duplicates remove them
     new_triangles = unique(new_triangles, axis=0)
+    new_triangles.sort(axis=1)
     return new_R, new_z, new_triangles
 
 
 
 
-def mesh_generator(R_wall, z_wall, resolution=0.03, edge_resolution=None, edge_padding=0.75,
-                   edge_max_area=0.9, rotation=None, boundary_plot=False):
+def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None, edge_padding=0.75,
+                   edge_max_area=1.1, rotation=None):
+    """
+    Generate a triangular mesh which fills the space inside a given boundary, using a 2-stage
+    process. First, a mesh of equilateral triangles is created which fills the space inside
+    the boundary, up to a chosen minimum distance from the boundary. An irregular mesh is then
+    generated which fills the space between the central equilateral mesh and the boundary. The
+    two meshes are then merged, and the resulting mesh is returned.
 
+    :param R_boundary: \
+        The major-radius values of the boundary as a 1D numpy array.
+
+    :param z_boundary: \
+        The z-height values of the boundary as a 1D numpy array.
+
+    :param resolution: \
+        The side-length of triangles in the central equilateral mesh.
+
+    :param edge_resolution: \
+        Sets the target area of triangles in the irregular edge mesh, which fills the space between
+        the central equilateral mesh and the boundary. The `Triangle` C-code, which is used to
+        generate the irregular mesh, will attempt to construct triangles with areas equal to that
+        of an equilateral triangle with side length ``edge_resolution``. If not specified, the value
+        passed as the ``resolution`` argument is used instead.
+
+    :param edge_padding: \
+        A multiplicative factor which defines the minimum allowed distance between a
+        vertex in the central equilateral mesh and the boundary such that
+        ``min_distance = edge_padding * resolution``. No vertices in the central equilateral
+        mesh will be closer to the boundary than ``min_distance``.
+
+    :param edge_max_area: \
+        A multiplicative factor which sets the maximum allowed area of triangles in the
+        irregular edge mesh, such that no triangle will have an area larger than
+        ``edge_max_area`` times the target area set by the ``edge_resolution`` argument.
+
+    :param rotation: \
+        Angle (in radians) by which the orientations of triangles inb the central
+        equilateral mesh are rotated, relative to their default orientation.
+
+    :return: \
+        A tuple containing ``R_vert``, ``z_vert`` and ``triangles``.
+        ``R_vert`` is the major-radius of the vertices as a 1D array. ``z_vert`` the is
+        z-height of the vertices as a 1D array. ``triangles`` is a 2D array of integers
+        of shape ``(N,3)`` specifying the indices of the vertices which form each triangle
+        in the mesh, where ``N`` is the total number of triangles.
+    """
     # build the central mesh
     print(' # Constructing central mesh...')
     central_R, central_z, central_triangles = build_central_mesh(
-        R_boundary=R_wall,
-        z_boundary=z_wall,
-        scale=resolution,
+        R_boundary=R_boundary,
+        z_boundary=z_boundary,
+        resolution=resolution,
         padding_factor=edge_padding,
         rotation=rotation
     )
@@ -515,16 +562,6 @@ def mesh_generator(R_wall, z_wall, resolution=0.03, edge_resolution=None, edge_p
     central_boundary = boundaries[-1]
     central_boundary = concatenate([central_boundary, atleast_1d(central_boundary[0])])
 
-    if boundary_plot:
-        plt.plot(R_wall, z_wall, '.-')
-        for b in boundaries:
-            plt.plot(central_R[b], central_z[b], '.-', lw=3)
-
-        mesh = TriangularMesh(central_R, central_z, central_triangles)
-        mesh.draw(plt)
-        plt.axis('equal')
-        plt.show()
-
     # now we have the boundary, we can build the edge mesh using triangle.
     # prepare triangle inputs:
     if edge_resolution is None:
@@ -532,7 +569,7 @@ def mesh_generator(R_wall, z_wall, resolution=0.03, edge_resolution=None, edge_p
     eq_area = (edge_resolution**2) * 0.25 * sqrt(3)
     area_multiplier = edge_max_area
 
-    outer = (R_wall, z_wall)
+    outer = (R_boundary, z_boundary)
     inner = (central_R[central_boundary], central_z[central_boundary])
     voids = [[inner[0].mean()], [inner[1].mean()]]
 

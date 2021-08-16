@@ -96,11 +96,11 @@ class BarycentricGeometryMatrix(object):
             returned as a dictionary, but is not saved.
 
         :return matrix_data: \
-            The Geometry matrix data as a dictionary of numpy arrays. The structure of the
+            The geometry matrix data as a dictionary of numpy arrays. The structure of the
             dictionary is as follows: ``entry_values`` is a 1D numpy array containing the values
             of all non-zero matrix entries. ``row_indices`` is a 1D numpy array containing the
             row-index of the each of the non-zero entries. ``col_indices`` is a 1D numpy array
-            containing the row-index of the each of the non-zero entries. ``shape`` is a 1D
+            containing the column-index of the each of the non-zero entries. ``shape`` is a 1D
             numpy array containing the dimensions of the matrix. The arrays defining
             the mesh are also stored as ``R``, ``z`` and ``triangles``.
         """
@@ -364,21 +364,19 @@ class GeometryFactors(object):
 
 def build_edge_map(triangles):
     """
-    Generates the `triangle_edges` array, which maps the index of a triangle, to the
-    indices of the edges it contains, and the `edge_vertices` array, which maps the
-    index of an edge to the indices of the vertices it contains.
+    Generates various mappings to and from edges in the mesh.
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape `(N,3)` where `N` is
-        the total number of triangles.
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
 
     :return: \
         A tuple containing ``triangle_edges``, ``edge_vertices`` and ``edge_map``.
         ``triangle_edges`` specifies the indices of the edges which make up each
-        triangle as a 2D numpy array of shape``(N,3)`` where ``N`` is the total
+        triangle as a 2D numpy array of shape ``(N,3)`` where ``N`` is the total
         number of triangles. ``edge_vertices`` specifies the indices of the vertices
-        which make up each edge as a 2D numpy array of shape``(M,2)`` where ``M``
+        which make up each edge as a 2D numpy array of shape ``(M,2)`` where ``M``
         is the total number of edges. ``edge_map`` is a dictionary mapping the index
         of an edge to the indices of the triangles to which it belongs.
     """

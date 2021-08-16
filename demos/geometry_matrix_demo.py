@@ -9,9 +9,9 @@ from tokamesh.geometry import BarycentricGeometryMatrix, Camera
 
 # build a simple equilateral mesh
 R, z, triangles = equilateral_mesh(
-    x_range=(0.3,1.5),
-    y_range=(-0.5,0.5),
-    scale=0.03
+    R_range=(0.3, 1.5),
+    z_range=(-0.5, 0.5),
+    resolution=0.03
 )
 
 # define a test function which sets the emission value in (R,z)

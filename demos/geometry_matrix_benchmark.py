@@ -16,7 +16,7 @@ by geometry matrices produced by the BarycentricGeometryMatrix class.
 """
 
 # build a basic mesh out of equilateral triangles
-R, z, triangles = equilateral_mesh(scale=0.01, x_range=[0,0.2], y_range=[0,0.2])
+R, z, triangles = equilateral_mesh(resolution=0.01, R_range=[0, 0.2], z_range=[0, 0.2])
 mesh = TriangularMesh(R, z, triangles)
 
 # generate a random test field using a gaussian process

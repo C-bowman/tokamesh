@@ -1,5 +1,5 @@
- Calculating geometry matrices
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Calculating geometry matrices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Geometry matrix calculation is handled by the ``BarycentricGeometryMatrix`` class
 from the ``tokamesh.geometry`` module.
