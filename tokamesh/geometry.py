@@ -387,9 +387,9 @@ def build_edge_map(triangles):
     edge_indices = {}
     edge_map = defaultdict(list)
     for i in range(n_triangles):
-        s1 = (triangles[i,0], triangles[i,1])
-        s2 = (triangles[i,1], triangles[i,2])
-        s3 = (triangles[i,0], triangles[i,2])
+        s1 = (min(triangles[i,0], triangles[i,1]), max(triangles[i,0], triangles[i,1]))
+        s2 = (min(triangles[i,1], triangles[i,2]), max(triangles[i,1], triangles[i,2]))
+        s3 = (min(triangles[i,0], triangles[i,2]), max(triangles[i,0], triangles[i,2]))
         for j, edge in enumerate([s1, s2, s3]):
             if edge not in edge_indices:
                 edge_indices[edge] = len(edge_indices)

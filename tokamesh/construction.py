@@ -113,7 +113,9 @@ def trim_vertices(R, z, triangles, bools):
     tri_inds = tri_bools.nonzero()[0]
     index_converter = zeros(R.size, dtype=int64)
     index_converter[vert_inds] = arange(vert_inds.size)
-    return R[vert_inds], z[vert_inds], index_converter[triangles[tri_inds,:]]
+    trim_triangles = index_converter[triangles[tri_inds,:]]
+    trim_triangles.sort(axis=1)
+    return R[vert_inds], z[vert_inds], trim_triangles
 
 
 

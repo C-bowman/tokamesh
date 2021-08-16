@@ -15,7 +15,7 @@ fusion-energy devices such as [MAST-U](https://ccfe.ukaea.uk/research/mast-upgra
    - Tokamesh provides tools to create meshes that are optimised for tomography problems,
      e.g. local-refinement of triangles to increase mesh density in areas where it is
      needed without greatly increasing the size of the mesh.
-     ![Example mesh](https://i.imgur.com/lbdZJbY.png)
+     ![Example mesh](https://i.imgur.com/lNGVnaY.png)
    
 ### Documentation
 ReadTheDocs site coming soon!
