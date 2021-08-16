@@ -157,7 +157,10 @@ class TriangularMesh(object):
         """
         if ('color' not in kwargs) and ('c' not in kwargs):
             kwargs['color'] = 'black'
-        ax.plot(self.R_edges.T, self.z_edges.T, **kwargs)
+        ax.plot(self.R_edges[0,:].T, self.z_edges[0,:].T, **kwargs)
+        if 'label' in kwargs:
+            kwargs['label'] = None
+        ax.plot(self.R_edges[1:,:].T, self.z_edges[1:,:].T, **kwargs)
 
     def get_field_image(self, vertex_values, shape=(150,150), pad_fraction=0.01):
         """
