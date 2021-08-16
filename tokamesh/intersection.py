@@ -1,3 +1,4 @@
+from numpy import full, nan
 
 def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
     """
@@ -35,9 +36,12 @@ def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
     # extract data for the edges which might intersect
     R = R_edges[i,:]
     z = z_edges[i,:]
-    edge_grads = (z[:,1] - z[:,0])/(R[:,1] - R[:,0])
+    dR = R[:,1] - R[:,0]
+    dz = z[:,1] - z[:,0]
+    nonzeros = ((dR != 0.) & (dz != 0.)).nonzero()[0]
+    edge_grads = full(R.shape[0], fill_value=nan)
+    edge_grads[nonzeros] = dz[nonzeros]/dR[nonzeros]
     edge_const = z[:,0] - edge_grads*R[:,0]
-
     # first we check to see if any of the points are inside the rectangle
     inside_check = ((R_lims[0] < R) & (R_lims[1] > R) & (z_lims[0] < z) & (z_lims[1] > z)).any(axis=1)
 

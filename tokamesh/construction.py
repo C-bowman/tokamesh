@@ -1,6 +1,6 @@
 
-from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique, isclose
-from numpy import array, ones, zeros, linspace, arange, int64, concatenate, atleast_1d, intersect1d
+from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique, isclose, nan
+from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate, atleast_1d, intersect1d
 from warnings import warn
 
 from tokamesh.geometry import build_edge_map
@@ -140,8 +140,12 @@ class Polygon(object):
 
         self.dx = diff(self.x)
         self.dy = diff(self.y)
-        self.im = self.dx / self.dy
-        self.c = self.y[:-1] - self.x[:-1]*self.dy/self.dx
+        self.im = full(self.dx.size, fill_value=nan)
+        self.c = full(self.dx.size, fill_value=nan)
+        im_inds = (self.dy != 0.).nonzero()[0]
+        c_inds = (self.dx != 0.).nonzero()[0]
+        self.im[im_inds] = self.dx[im_inds] / self.dy[im_inds]
+        self.c[c_inds] = self.y[:-1][c_inds] - self.x[:-1][c_inds]*self.dy[c_inds]/self.dx[c_inds]
 
         # pre-calculate the bounding rectangle of each edge for intersection testing
         self.x_upr = maximum(self.x[1:], self.x[:-1])
@@ -544,7 +548,6 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
         in the mesh, where ``N`` is the total number of triangles.
     """
     # build the central mesh
-    print(' # Constructing central mesh...')
     central_R, central_z, central_triangles = build_central_mesh(
         R_boundary=R_boundary,
         z_boundary=z_boundary,
@@ -554,7 +557,6 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
     )
 
     # now construct the boundary for the central mesh
-    print(' # Finding central mesh boundary...')
     boundaries = find_boundaries(central_triangles)
     # if there are multiple boundaries, sort them by length
     if len(boundaries) > 1:
@@ -574,7 +576,6 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
     voids = [[inner[0].mean()], [inner[1].mean()]]
 
     # run triangle using the python wrapper
-    print(' # Constructing edge mesh...')
     edge_R, edge_z, edge_triangles = run_triangle(
         outer_boundary=outer,
         inner_boundary=inner,
@@ -582,7 +583,6 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
         max_area=eq_area*area_multiplier)
 
     # combine the central and edge meshes
-    print(' # Merging edge and central meshes...')
     R = concatenate([central_R, edge_R])
     z = concatenate([central_z, edge_z])
     triangles = concatenate([central_triangles, edge_triangles + central_R.size], axis=0)

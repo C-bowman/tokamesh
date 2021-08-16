@@ -95,7 +95,7 @@ class BarycentricGeometryMatrix(object):
             using the numpy ``.npz`` format. If not specified, the geometry matrix data is still
             returned as a dictionary, but is not saved.
 
-        :return matrix_data: \
+        :return: \
             The geometry matrix data as a dictionary of numpy arrays. The structure of the
             dictionary is as follows: ``entry_values`` is a 1D numpy array containing the values
             of all non-zero matrix entries. ``row_indices`` is a 1D numpy array containing the

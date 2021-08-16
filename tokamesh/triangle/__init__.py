@@ -111,7 +111,6 @@ def run_triangle(outer_boundary=None, inner_boundary=None, void_markers=None, ma
     # After reading the data back in from triangle, exact numeric value of
     # vertices can be changed via truncation. Due to this, we may need to
     # adjust their value to match the existing central mesh edge vertices.
-    print(' # matching edge and central meshes...')
     b_x = array(inner_r[:-1])  # get the boundary coords - these are the 'correct' values
     b_y = array(inner_z[:-1])
 
