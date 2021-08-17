@@ -364,7 +364,7 @@ def build_central_mesh(R_boundary, z_boundary, resolution, padding_factor=1., ro
 
 
 
-def refine_mesh(R, z, triangles, refinement_inds):
+def refine_mesh(R, z, triangles, refinement_bools):
     """
     Refine a mesh by partitioning specified triangles into 4 sub-triangles.
     Triangles sharing one or more edges with those being refined will also
@@ -381,13 +381,16 @@ def refine_mesh(R, z, triangles, refinement_inds):
         each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N``
         is the total number of triangles.
 
-    :param refinement_inds: \
-        A list or array specifying the indices of the triangles to be refined.
+    :param refinement_bools: \
+        A numpy array of bools specifying which triangles will be refined. Triangles with
+        indices corresponding to ``True`` values in the bool array will be refined.
 
     :return R, z, triangles: \
         The ``R``, ``z`` and ``triangles`` arrays (defined as described above) for the
         refined mesh.
     """
+    # convert the bools to indices
+    refinement_inds = refinement_bools.nonzero()[0]
     # build a set as we'll be performing membership checks
     refine_set = {i for i in refinement_inds}
 
