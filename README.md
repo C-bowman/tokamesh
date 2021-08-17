@@ -1,5 +1,8 @@
 
 # Tokamesh
+
+[![Documentation Status](https://readthedocs.org/projects/tokamesh/badge/?version=latest)](https://tokamesh.readthedocs.io/en/latest/?badge=latest)
+
 Tokamesh is a Python package which provides tools for constructing meshes 
 and geometry matrices used in tomographic inversion problems in toroidal
 fusion-energy devices such as [MAST-U](https://ccfe.ukaea.uk/research/mast-upgrade/).
@@ -16,6 +19,11 @@ fusion-energy devices such as [MAST-U](https://ccfe.ukaea.uk/research/mast-upgra
      e.g. local-refinement of triangles to increase mesh density in areas where it is
      needed without greatly increasing the size of the mesh.
      ![Example mesh](https://i.imgur.com/lNGVnaY.png)
-   
+ 
+### Jupyter notebook demos
+Jupyter notebooks are available which demo 
+[mesh construction](https://github.com/C-bowman/tokamesh/blob/main/demos/mesh_construction_demo.ipynb)
+and [geometry matrix calculation](https://github.com/C-bowman/tokamesh/blob/main/demos/geometry_matrix_demo.ipynb).
+
 ### Documentation
 The package documentation is available at [tokamesh.readthedocs.io](https://tokamesh.readthedocs.io/en/latest/).
