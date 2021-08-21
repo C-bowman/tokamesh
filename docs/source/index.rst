@@ -7,9 +7,22 @@ Please use the `issue tracker <https://github.com/C-bowman/tokamesh/issues>`_ to
 or to request features/improvements.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Geometry matrices
 
+   geometry_background
    geometry
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Triangular meshes
+
    construction
+   construction_refinement
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Interpolation and plotting
+
    TriangularMesh

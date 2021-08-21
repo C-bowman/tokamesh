@@ -1,0 +1,51 @@
+Background
+~~~~~~~~~~
+
+A geometry matrix is a linear model which predicts the brightnesses that
+line-integrated instruments (e.g. cameras, spectrometers) would measure
+when imaging a given distribution of emission.
+
+The geometry matrix element can be derived as follows: To predict the
+measured brightness of the :math:`i`'th line-of-sight :math:`b_i` we
+multiply the emission :math:`\mathcal{E}(x, y, z)` by a 'sensitivity'
+function :math:`\mathcal{S}_i (x, y, z)` which describes what fraction
+of emission at any point in space is measured as brightness by the
+instrument, and intgrate this product over all space so that
+
+.. math::
+   b_i = \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} \int_{-\infty}^{\infty}
+   \mathcal{E}(x, y, z) \mathcal{S}_i (x, y, z) \,\mathrm{d}x \,\mathrm{d}y \,\mathrm{d}z .
+
+Next, we assume that the emission function is toroidally symmetric,
+such that it depends only on the major radius :math:`R = \sqrt{x^2 + y^2}`
+and :math:`z`. Additionally, we assume the emission can be expressed as
+a weighted-sum of 2D basis functions :math:`\phi_j (R,z)` such that
+
+.. math::
+   \mathcal{E}(R, z) = \sum_{j} x_j \phi_j (R,z)
+
+We may now re-write :math:`b_i` as
+
+.. math::
+   b_i = \sum_j G_{ij} x_j
+
+where :math:`G_{ij}` is the geometry matrix element given by
+
+.. math::
+   G_{ij} = \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} \int_{-\infty}^{\infty}
+   \phi_j (R,z) \mathcal{S}_i (x, y, z) \,\mathrm{d}x \,\mathrm{d}y \,\mathrm{d}z .
+
+After calculating the geometry matrix :math:`\mathbf{G}`, the vector of brightness
+predictions :math:`\mathbf{b}` can be obtained through a single matrix-vector
+product such that :math:`\mathbf{b = Gx}`.
+
+However, defining a 3D sensitivity function for each line-of-sight is complicated,
+and computing the 3D integral for all elements of the geometry matrix is very
+expensive for instruments with a large number of lines-of-sight, such as a camera.
+
+Instead, a further approximation is made, where we assume that each line-of-sight
+collects emission only along a single line :math:`\ell_i`. This allows :math:`G_{ij}`
+to be re-written as a line-integral through the basis functions so that
+
+.. math::
+   G_{ij} = \int \phi_j (R,z) \,\mathrm{d}\ell_i.
