@@ -24,7 +24,7 @@ a weighted-sum of 2D basis functions :math:`\phi_j (R,z)` such that
 .. math::
    \mathcal{E}(R, z) = \sum_{j} x_j \phi_j (R,z)
 
-We may now re-write :math:`b_i` as
+where :math:`x_j` are the basis function weights. We may now re-write :math:`b_i` as
 
 .. math::
    b_i = \sum_j G_{ij} x_j
@@ -49,3 +49,43 @@ to be re-written as a line-integral through the basis functions so that
 
 .. math::
    G_{ij} = \int \phi_j (R,z) \,\mathrm{d}\ell_i.
+
+
+Choice of basis functions
+-------------------------
+
+When using a triangular mesh to represent the solution of a tomography problem,
+the typical approach is to assume that the emission inside each triangle is
+constant. This is equivalent to zeroth-order interpolation, and leads to the
+following set of basis functions:
+
+.. math::
+   \phi_i (R,z) =
+   \begin{cases}
+   1       & \quad \text{if point } (R,z) \text{ is inside triangle } i \\
+   0       & \quad \text{otherwise}
+   \end{cases}
+
+Tokamesh instead uses first-order (barycentric) interpolation to define the emission
+inside each triangle. In this approach, the basis-function weights :math:`x_i` become
+the emissivity :math:`\mathcal{E}_i` at each vertex. The emissivity inside a triangle
+made up of vertices :math:`i`, :math:`j` and :math:`k` is given by the plane defined
+by the three points :math:`(R_i, z_i, \mathcal{E}_i), (R_j, z_j, \mathcal{E}_j), (R_k, z_k, \mathcal{E}_k)`.
+
+This leads to the following 'barycentric' basis functions:
+
+.. math::
+   \phi_i (R,z) =
+   \begin{cases}
+   \lambda_i (R,z)       & \quad \text{if point } (R,z) \text{ is inside a triangle containing vertex } i \\
+   0       & \quad \text{otherwise}
+   \end{cases}
+
+where :math:`\lambda_i (R,z)` is the barycentric coordinate for vertex :math:`i` given by
+
+.. math::
+   \lambda_i (R,z) =
+   \frac{ (z_j - z_k)(R - R_k) + (R_k - R_j)(z - z_k) }{(z_j - z_k)(R_i - R_k) + (R_k - R_j)(z_i - z_k)}
+
+and :math:`(R_i, z_i), (R_j, z_j), (R_k, z_k)` are the positions of vertices :math:`i`, :math:`j` and :math:`k`
+respectively.
