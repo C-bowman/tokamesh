@@ -81,7 +81,7 @@ def rotate(R, z, angle, pivot):
 
 
 
-def trim_vertices(R, z, triangles, bools):
+def trim_vertices(R, z, triangles, trim_bools):
     """
     Removes chosen vertices (and any triangles containing those vertices) from a mesh.
 
@@ -96,7 +96,7 @@ def trim_vertices(R, z, triangles, bools):
         each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N``
         is the total number of triangles.
 
-    :param bools: \
+    :param trim_bools: \
         A 1D array of boolean values corresponding to the vertices, which is ``True`` for
         any vertices which are to be removed from the mesh.
 
@@ -104,7 +104,7 @@ def trim_vertices(R, z, triangles, bools):
         The ``R``, ``z`` and ``triangles`` arrays (defined as described above) with the
         specified vertices removed.
     """
-    vert_inds = (~bools).nonzero()[0]
+    vert_inds = (~trim_bools).nonzero()[0]
     tri_bools = in1d(triangles[:,0],vert_inds)
     tri_bools &= in1d(triangles[:,1],vert_inds)
     tri_bools &= in1d(triangles[:,2],vert_inds)
