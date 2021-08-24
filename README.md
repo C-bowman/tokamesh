@@ -21,9 +21,16 @@ fusion-energy devices such as [MAST-U](https://ccfe.ukaea.uk/research/mast-upgra
      ![Example mesh](https://i.imgur.com/lNGVnaY.png)
  
 ### Jupyter notebook demos
-Jupyter notebooks are available which demo 
+Jupyter notebooks are available which demonstrate
 [mesh construction](https://github.com/C-bowman/tokamesh/blob/main/demos/mesh_construction_demo.ipynb)
 and [geometry matrix calculation](https://github.com/C-bowman/tokamesh/blob/main/demos/geometry_matrix_demo.ipynb).
+
+### Installation
+Tokamesh is available from [PyPI](https://pypi.org/project/tokamesh/), 
+so can be easily installed using [pip](https://pip.pypa.io/en/stable/) as follows:
+```bash
+pip install tokamesh
+```
 
 ### Documentation
 The package documentation is available at [tokamesh.readthedocs.io](https://tokamesh.readthedocs.io/en/latest/).
