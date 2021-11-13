@@ -1,4 +1,6 @@
+
 from numpy import full, nan
+
 
 def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
     """

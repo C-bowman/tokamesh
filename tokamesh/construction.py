@@ -1,6 +1,7 @@
 
-from numpy import sqrt, ceil, sin, cos, arctan2, in1d, diff, minimum, maximum, unique, isclose, nan
-from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate, atleast_1d, intersect1d
+from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum
+from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate
+from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
 from warnings import warn
 
 from tokamesh.geometry import build_edge_map
@@ -12,10 +13,12 @@ def equilateral_mesh(R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=No
     Construct a mesh from equilateral triangles which fills a rectangular region.
 
     :param R_range: \
-        A tuple in the form ``(R_min, R_max)`` specifying the range of major radius values to cover with triangles.
+        A tuple in the form ``(R_min, R_max)`` specifying the range of major radius
+        values to cover with triangles.
 
     :param z_range: \
-        A tuple in the form ``(z_min, z_max)`` specifying the range of z-height values to cover with triangles.
+        A tuple in the form ``(z_min, z_max)`` specifying the range of z-height values
+        to cover with triangles.
 
     :param float resolution: \
         The side-length of the triangles.
@@ -28,10 +31,10 @@ def equilateral_mesh(R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=No
 
     :return: \
         A tuple containing ``R_vert``, ``z_vert`` and ``triangles``.
-        ``R_vert`` is the major radius of the vertices as a 1D array. ``z_vert`` the is z-height
-        of the vertices as a 1D array. ``triangles`` is a 2D array of integers of shape ``(N,3)``
-        specifying the indices of the vertices which form each triangle in the mesh, where
-        ``N`` is the total number of triangles.
+        ``R_vert`` is the major radius of the vertices as a 1D array. ``z_vert`` the is
+        z-height of the vertices as a 1D array. ``triangles`` is a 2D array of integers
+        of shape ``(N,3)`` specifying the indices of the vertices which form each
+        triangle in the mesh, where ``N`` is the total number of triangles.
     """
     # determine how many rows / columns of triangles to create
     N = int(ceil((R_range[1] - R_range[0]) / resolution))

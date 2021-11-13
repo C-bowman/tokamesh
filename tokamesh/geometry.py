@@ -20,18 +20,18 @@ class BarycentricGeometryMatrix(object):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
-        the total number of triangles.
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
 
     :param ray_origins: \
-        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight) as
-        a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the total number
-        of rays.
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
 
     :param ray_ends: \
-        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight) as
-        a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the total number
-        of rays.
+        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
     """
     def __init__(self, R, z, triangles, ray_origins, ray_ends):
         # first check the validity of the data
@@ -91,18 +91,18 @@ class BarycentricGeometryMatrix(object):
         Calculate the geometry matrix.
 
         :keyword str save_file: \
-            A string specifying a file path to which the geometry matrix data will be saved
-            using the numpy ``.npz`` format. If not specified, the geometry matrix data is still
-            returned as a dictionary, but is not saved.
+            A string specifying a file path to which the geometry matrix data will be
+            saved using the numpy ``.npz`` format. If not specified, the geometry matrix
+            data is still returned as a dictionary, but is not saved.
 
         :return: \
-            The geometry matrix data as a dictionary of numpy arrays. The structure of the
-            dictionary is as follows: ``entry_values`` is a 1D numpy array containing the values
-            of all non-zero matrix entries. ``row_indices`` is a 1D numpy array containing the
-            row-index of each of the non-zero entries. ``col_indices`` is a 1D numpy array
-            containing the column-index of each of the non-zero entries. ``shape`` is a 1D
-            numpy array containing the dimensions of the matrix. The arrays defining
-            the mesh are also stored as ``R``, ``z`` and ``triangles``.
+            The geometry matrix data as a dictionary of numpy arrays. The structure of
+            the dictionary is as follows: ``entry_values`` is a 1D numpy array containing
+            the values of all non-zero matrix entries. ``row_indices`` is a 1D numpy
+            array containing the row-index of each of the non-zero entries. ``col_indices``
+            is a 1D numpy array containing the column-index of each of the non-zero entries.
+            ``shape`` is a 1D numpy array containing the dimensions of the matrix. The
+            arrays defining the mesh are also stored as ``R``, ``z`` and ``triangles``.
         """
         # clear the geometry factors in case they contains data from a previous calculation
         self.GeomFacs.vertex_map.clear()
@@ -123,8 +123,9 @@ class BarycentricGeometryMatrix(object):
             # print the progress
             f_complete = (end+1)/self.n_triangles
             eta = int((time() - t_start) * (1 - f_complete) / f_complete)
-            msg = '\r >> Calculating geometry matrix:  [ {:.1%} complete   ETA: {} sec ]           '.format(f_complete, eta)
-            sys.stdout.write(msg)
+            sys.stdout.write(
+                f"\r >> Calculating geometry matrix:  [ {f_complete:.1%} complete   ETA: {eta} sec ]           "
+            )
             sys.stdout.flush()
 
         # clean up any remaining triangles
@@ -135,7 +136,9 @@ class BarycentricGeometryMatrix(object):
         mins, secs = divmod(t_elapsed, 60)
         hrs, mins = divmod(mins, 60)
         time_taken = "%d:%02d:%02d" % (hrs, mins, secs)
-        sys.stdout.write('\r >> Calculating geometry matrix:  [ completed in {} sec ]           '.format(time_taken))
+        sys.stdout.write(
+            f"\r >> Calculating geometry matrix:  [ completed in {time_taken} sec ]           "
+        )
         sys.stdout.flush()
         sys.stdout.write('\n')
 
