@@ -2,11 +2,12 @@
 from numpy import linspace, array, zeros, sqrt, sinc
 from scipy.sparse import csc_matrix
 from numpy.random import multivariate_normal
-from scipy.integrate import simps
+from scipy.integrate import quad, simps
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
 from tokamesh.geometry import Camera, BarycentricGeometryMatrix
+from tokamesh.geometry import radius_hyperbolic_integral
 
 
 def test_BarycentricGeometryMatrix():
@@ -56,3 +57,20 @@ def test_BarycentricGeometryMatrix():
         direct_integrals[i] = simps(samples, x=L)
 
     assert (abs(direct_integrals - matrix_integrals) < 1e-3).all()
+
+
+def test_radius_hyperbolic_integral():
+    # testing analytic integral solution of following function:
+    def R(l, l_tan, R_tan_sq, sqrt_q2):
+        return sqrt((sqrt_q2*(l - l_tan))**2 + R_tan_sq)
+
+    l1, l2 = (0.1, 1.7)  # start / end points
+    l_tan = 1.2  # line distance of tangency point
+    R_tan_sq = 0.2  # squared major radius of tangency point
+    sqrt_q2 = 0.35  # sqrt of quadratic coefficient of the ray
+    # numerically evaluate the integral
+    numeric, err = quad(func=R, a=l1, b=l2, args=(l_tan, R_tan_sq, sqrt_q2))
+    # get the analytic solution
+    exact = radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sq, sqrt_q2)
+    # confirm that they agree
+    assert abs(exact - numeric) < 2*abs(err)
