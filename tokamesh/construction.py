@@ -167,14 +167,10 @@ class Polygon(object):
         x, y = v
         k = (y - self.c)*self.im
 
-        limits_check = (self.y_lwr <= y) & (y <= self.y_upr) & (x <= self.x_upr)
-        isec_check = ((self.x_lwr <= k) & (k <= self.x_upr) & (x <= k)) | self.zero_im
-
+        limits_check = (self.y_lwr < y) & (y < self.y_upr) & (x < self.x_upr)
+        isec_check = (x < k) | self.zero_im
         intersections = (limits_check & isec_check).sum()
-        if intersections % 2 == 0:
-            return False
-        else:
-            return True
+        return True if intersections % 2 == 1 else False
 
     def distance(self, v):
         x, y = v
