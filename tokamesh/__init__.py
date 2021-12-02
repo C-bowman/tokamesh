@@ -99,18 +99,8 @@ class TriangularMesh(object):
         """
         R_vals = atleast_1d(R)
         z_vals = atleast_1d(z)
-        # first determine in which cell each point lies using the binary trees
-        grid_coords = zeros([R_vals.size,2], dtype=int64)
-        grid_coords[:,0] = self.R_tree.lookup_index(R_vals)
-        grid_coords[:,1] = self.z_tree.lookup_index(z_vals)
-        # find the set of unique grid coordinates
-        unique_coords, inverse, counts = unique(grid_coords, axis=0, return_inverse=True, return_counts=True)
-        # now create an array of indices which are ordered according to which of the unqiue values they match
-        indices = inverse.argsort()
-        # build a list of slice objects which addresses those indices which match each unique coordinate
-        ranges = counts.cumsum()
-        slices = [slice(0, ranges[0])]
-        slices.extend([slice(*ranges[i:i + 2]) for i in range(ranges.size - 1)])
+        # lookup sets of coordinates are in each grid cell
+        unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
         # loop over each unique grid coordinate
         interpolated_values = zeros(R_vals.size)
         for v, slc in zip(unique_coords, slices):
@@ -119,13 +109,77 @@ class TriangularMesh(object):
             if key in self.tree_map:
                 search_triangles = self.tree_map[key]  # the triangles intersecting this cell
                 cell_indices = indices[slc]  # the indices of points inside this cell
-                # get the barycentric coord values of each point, and the index of the triangle which contains them
-                coords, container_triangles = self.bary_coords(R_vals[cell_indices], z_vals[cell_indices], search_triangles)
+                # get the barycentric coord values of each point, and the
+                # index of the triangle which contains them
+                coords, container_triangles = self.bary_coords(
+                    R_vals[cell_indices],
+                    z_vals[cell_indices],
+                    search_triangles
+                )
                 # get the values of the vertices for the triangles which contain the points
                 vals = vertex_values[self.triangle_vertices[container_triangles,:]]
-                # take the dot-product of the coordinates and the vertex values to get the interpolated value
+                # take the dot-product of the coordinates and the vertex
+                # values to get the interpolated value
                 interpolated_values[cell_indices] = (coords*vals).sum(axis=1)
         return interpolated_values
+
+    def find_triangle(self, R, z):
+        """
+        Find the indices of the triangles which contain a given set of points.
+
+        :param R: \
+            The major-radius of each point as a 1D numpy array.
+
+        :param z: \
+            The z-height of each point as a 1D numpy array.
+
+        :return: \
+            The indices of the triangles which contain each point as 1D numpy array.
+            Any points which are not inside a triangle are given an index of -1.
+        """
+        R_vals = atleast_1d(R)
+        z_vals = atleast_1d(z)
+        # lookup sets of coordinates are in each grid cell
+        unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
+        # loop over each unique grid coordinate
+        triangle_indices = full(R_vals.size, fill_value=-1, dtype=int)
+        for v, slc in zip(unique_coords, slices):
+            # only need to proceed if the current coordinate contains triangles
+            key = (v[0], v[1])
+            if key in self.tree_map:
+                search_triangles = self.tree_map[key]  # the triangles intersecting this cell
+                cell_indices = indices[slc]  # the indices of points inside this cell
+                # get the barycentric coord values of each point, and the
+                # index of the triangle which contains them
+                coords, container_triangles = self.bary_coords(
+                    R_vals[cell_indices],
+                    z_vals[cell_indices],
+                    search_triangles
+                )
+                triangle_indices[cell_indices] = container_triangles
+        return triangle_indices
+
+    def grid_lookup(self, R, z):
+        # first determine in which cell each point lies using the binary trees
+        grid_coords = zeros([R.size,2], dtype=int64)
+        grid_coords[:,0] = self.R_tree.lookup_index(R)
+        grid_coords[:,1] = self.z_tree.lookup_index(z)
+        # find the set of unique grid coordinates
+        unique_coords, inverse, counts = unique(
+            grid_coords,
+            axis=0,
+            return_inverse=True,
+            return_counts=True
+        )
+        # now create an array of indices which are ordered according
+        # to which of the unique values they match
+        indices = inverse.argsort()
+        # build a list of slice objects which addresses those indices
+        # which match each unique coordinate
+        ranges = counts.cumsum()
+        slices = [slice(0, ranges[0])]
+        slices.extend([slice(*ranges[i:i + 2]) for i in range(ranges.size - 1)])
+        return unique_coords, slices, indices
 
     def bary_coords(self, R, z, search_triangles):
         Q = stack([atleast_1d(R), atleast_1d(z), full(R.size, fill_value=1.)], axis=0)
