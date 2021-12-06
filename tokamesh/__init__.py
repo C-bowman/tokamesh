@@ -1,6 +1,6 @@
 
 from numpy import searchsorted, stack, log2, floor, unique, atleast_1d
-from numpy import arange, linspace, int64, full, zeros, meshgrid
+from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
 from tokamesh.geometry import build_edge_map
@@ -86,19 +86,53 @@ class TriangularMesh(object):
         points which lie outside the mesh will be assigned a value of zero.
 
         :param R: \
-            The major-radius of each interpolation point as a 1D numpy array.
+            The major-radius of each interpolation point as a numpy array.
 
         :param z: \
-            The z-height of each interpolation point as a 1D numpy array.
+            The z-height of each interpolation point as a numpy array.
 
         :param vertex_values: \
             The function value at each mesh vertex as a 1D numpy array.
 
         :return: \
-            The interpolated function values as a 1D numpy array.
+            The interpolated function values as a numpy array.
         """
+        if type(vertex_values) is not ndarray or vertex_values.ndim != 1:
+            raise TypeError(
+                """\n
+                [ TriangularMesh error ]
+                >> The 'vertex_values' argument of the TriangularMesh.interpolate
+                >> method must have type numpy.ndarray, and have only one dimension.
+                """
+            )
+
+        if vertex_values.size != self.n_vertices:
+            raise ValueError(
+                f"""\n
+                [ TriangularMesh error ]
+                >> The size of 'vertex_values' argument of the TriangularMesh.interpolate
+                >> must be equal to the number of mesh vertices.
+                >> The mesh has {self.n_vertices} vertices but given array is of size {vertex_values.size}.
+                """
+            )
+
         R_vals = atleast_1d(R)
         z_vals = atleast_1d(z)
+
+        if R_vals.shape != z_vals.shape:
+            raise ValueError(
+                """\n
+                [ TriangularMesh error ]
+                >> The 'R' and 'z' arrays passed to the TriangularMesh.interpolate
+                >> method are of inconsistent shapes - their shapes must be equal.
+                """
+            )
+
+        input_shape = R_vals.shape
+        if len(input_shape) > 1:
+            R_vals = R_vals.flatten()
+            z_vals = z_vals.flatten()
+
         # lookup sets of coordinates are in each grid cell
         unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
         # loop over each unique grid coordinate
@@ -121,6 +155,8 @@ class TriangularMesh(object):
                 # take the dot-product of the coordinates and the vertex
                 # values to get the interpolated value
                 interpolated_values[cell_indices] = (coords*vals).sum(axis=1)
+        if len(input_shape) > 1:
+            interpolated_values.resize(input_shape)
         return interpolated_values
 
     def find_triangle(self, R, z):
@@ -128,17 +164,32 @@ class TriangularMesh(object):
         Find the indices of the triangles which contain a given set of points.
 
         :param R: \
-            The major-radius of each point as a 1D numpy array.
+            The major-radius of each point as a numpy array.
 
         :param z: \
-            The z-height of each point as a 1D numpy array.
+            The z-height of each point as a numpy array.
 
         :return: \
-            The indices of the triangles which contain each point as 1D numpy array.
+            The indices of the triangles which contain each point as numpy array.
             Any points which are not inside a triangle are given an index of -1.
         """
         R_vals = atleast_1d(R)
         z_vals = atleast_1d(z)
+
+        if R_vals.shape != z_vals.shape:
+            raise ValueError(
+                """\n
+                [ TriangularMesh error ]
+                >> The 'R' and 'z' arrays passed to the TriangularMesh.interpolate
+                >> method are of inconsistent shapes - their shapes must be equal.
+                """
+            )
+
+        input_shape = R_vals.shape
+        if len(input_shape) > 1:
+            R_vals = R_vals.flatten()
+            z_vals = z_vals.flatten()
+
         # lookup sets of coordinates are in each grid cell
         unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
         # loop over each unique grid coordinate
@@ -151,12 +202,14 @@ class TriangularMesh(object):
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
                 # index of the triangle which contains them
-                coords, container_triangles = self.bary_coords(
+                _, container_triangles = self.bary_coords(
                     R_vals[cell_indices],
                     z_vals[cell_indices],
                     search_triangles
                 )
                 triangle_indices[cell_indices] = container_triangles
+        if len(input_shape) > 1:
+            triangle_indices.resize(input_shape)
         return triangle_indices
 
     def grid_lookup(self, R, z):

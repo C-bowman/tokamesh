@@ -1,5 +1,5 @@
 import pytest
-from numpy import arange, array, sin, cos, pi, isclose
+from numpy import arange, array, sin, cos, pi, isclose, ones
 from numpy.random import uniform, seed
 from tokamesh import TriangularMesh
 from tokamesh.construction import equilateral_mesh
@@ -35,8 +35,33 @@ def test_interpolate(mesh):
     z_test = uniform(0.2, 0.8, size=50)
     # check the exact and interpolated values are equal
     interpolated = mesh.interpolate(R_test, z_test, vertex_values)
-    exact = plane(R_test, z_test)
-    assert isclose(interpolated, exact).all()
+    assert isclose(interpolated, plane(R_test, z_test)).all()
+
+    # now test multi-dimensional inputs
+    R_test = uniform(0.2, 0.8, size=[12, 3, 8])
+    z_test = uniform(0.2, 0.8, size=[12, 3, 8])
+    # check the exact and interpolated values are equal
+    interpolated = mesh.interpolate(R_test, z_test, vertex_values)
+    assert isclose(interpolated, plane(R_test, z_test)).all()
+
+    # now test giving just floats
+    interpolated = mesh.interpolate(0.31, 0.54, vertex_values)
+    assert isclose(interpolated, plane(0.31, 0.54)).all()
+
+
+def test_interpolate_inconsistent_shapes(mesh):
+    with pytest.raises(ValueError):
+        mesh.interpolate(ones([2, 1]), ones([2, 3]), ones(mesh.n_vertices))
+
+
+def test_interpolate_vertices_size(mesh):
+    with pytest.raises(ValueError):
+        mesh.interpolate(ones(5), ones(5), ones(mesh.n_vertices-2))
+
+
+def test_interpolate_vertices_type(mesh):
+    with pytest.raises(TypeError):
+        mesh.interpolate(ones(5), ones(5), [1.]*mesh.n_vertices)
 
 
 def test_find_triangle(mesh):
@@ -53,3 +78,8 @@ def test_find_triangle(mesh):
     assert (tri_inds == -1).all()
     # ideally we should find a way to generate lots of random
     # points just outside the boundary of the mesh to check.
+
+
+def test_find_triangle_inconsistent_shapes(mesh):
+    with pytest.raises(ValueError):
+        mesh.find_triangle(ones([2, 1]), ones([2, 3]))
