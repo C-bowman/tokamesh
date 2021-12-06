@@ -23,6 +23,26 @@ def mesh():
     return TriangularMesh(R=R, z=z, triangles=triangles)
 
 
+def test_TriangularMesh_input_types():
+    with pytest.raises(TypeError):
+        TriangularMesh(ones(5), ones(5), [1, 2, 3])
+
+
+def test_TriangularMesh_vertices_shape():
+    with pytest.raises(ValueError):
+        TriangularMesh(ones([5,2]), ones(5), ones([4,3]))
+
+
+def test_TriangularMesh_inconsistent_sizes():
+    with pytest.raises(ValueError):
+        TriangularMesh(ones(6), ones(5), ones([4,3]))
+
+
+def test_TriangularMesh_triangles_shape():
+    with pytest.raises(ValueError):
+        TriangularMesh(ones([5,2]), ones(5), ones([4,3,2]))
+
+
 def test_interpolate(mesh):
     # As barycentric interpolation is linear, if we use a plane as the test
     # function, it should agree nearly exactly with interpolation result.

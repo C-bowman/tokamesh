@@ -19,13 +19,54 @@ class TriangularMesh(object):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
-        the total number of triangles.
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
     """
     def __init__(self, R, z, triangles):
-        self.R = R
-        self.z = z
-        self.triangle_vertices = triangles
+
+        for name, obj in [('R', R), ('z', z), ('triangles', triangles)]:
+            if not isinstance(obj, ndarray):
+                raise TypeError(
+                    f"""\n
+                    [ TriangularMesh error ]
+                    >> The '{name}' argument of TriangularMesh should have type:
+                    >> {ndarray}
+                    >> but instead has type:
+                    >> {type(obj)}
+                    """
+                )
+
+        for name, obj in [('R', R), ('z', z)]:
+            if obj.squeeze().ndim > 1:
+                raise ValueError(
+                    f"""\n
+                    [ TriangularMesh error ]
+                    >> The '{name}' argument of TriangularMesh should be
+                    >> a 1D array, but given array has shape {obj.shape}.
+                    """
+                )
+
+        if R.size != z.size:
+            raise ValueError(
+                f"""\n
+                [ TriangularMesh error ]
+                >> The 'R' and 'z' arguments of TriangularMesh should be
+                >> of equal size, but given arrays have sizes {R.size} and {z.size}.
+                """
+            )
+
+        if triangles.squeeze().ndim != 2 or triangles.squeeze().shape[1] != 3:
+            raise ValueError(
+                f"""\n
+                [ TriangularMesh error ]
+                >> The 'triangles' argument must have shape (num_triangles, 3)
+                >> but given array has shape {triangles.shape}.
+                """
+            )
+
+        self.R = R.squeeze()
+        self.z = z.squeeze()
+        self.triangle_vertices = triangles.squeeze()
         self.n_vertices = self.R.size
         self.n_triangles = self.triangle_vertices.shape[0]
 
@@ -50,8 +91,8 @@ class TriangularMesh(object):
 
     def build_binary_trees(self):
         # we now divide the bounding rectangle of the mesh into
-        # into a rectangular grid, and create a mapping between
-        # each grid cell and all triangles which intersect it.
+        # a rectangular grid, and create a mapping between each
+        # grid cell and all triangles which intersect it.
 
         # find an appropriate depth for each tree
         R_extent = self.R[self.triangle_vertices].ptp(axis=1).mean()
