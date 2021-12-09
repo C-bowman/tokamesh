@@ -1,4 +1,3 @@
-
 from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum
 from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate
 from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
@@ -8,7 +7,9 @@ from tokamesh.geometry import build_edge_map
 from tokamesh.triangle import run_triangle
 
 
-def equilateral_mesh(R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=None, pivot=(0, 0)):
+def equilateral_mesh(
+    R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=None, pivot=(0, 0)
+):
     """
     Construct a mesh from equilateral triangles which fills a rectangular region.
 
@@ -42,14 +43,14 @@ def equilateral_mesh(R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=No
 
     # create the vertices by producing a rectangular grid
     # and shifting every other row
-    x_ax = linspace(0, N-1, N) * resolution
-    y_ax = linspace(0, M-1, M) * resolution * 0.5 * sqrt(3)
+    x_ax = linspace(0, N - 1, N) * resolution
+    y_ax = linspace(0, M - 1, M) * resolution * 0.5 * sqrt(3)
 
-    x = zeros([N,M])
-    y = zeros([N,M])
-    y[:,:] = y_ax[None,:] + z_range[0]
-    x[:,:] = x_ax[:,None] + R_range[0]
-    x[:,1::2] += 0.5 * resolution
+    x = zeros([N, M])
+    y = zeros([N, M])
+    y[:, :] = y_ax[None, :] + z_range[0]
+    x[:, :] = x_ax[:, None] + R_range[0]
+    x[:, 1::2] += 0.5 * resolution
 
     # rotate the vertices around a point if requested
     if rotation is not None:
@@ -57,12 +58,12 @@ def equilateral_mesh(R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=No
 
     # divide up the grid into triangles
     triangle_inds = []
-    for i in range(N-1):
-        for j in range(M-1):
-            v1 = M*i + j
-            v2 = M*(i+1) + j
-            v3 = M*i + j + 1
-            v4 = M*(i+1) + j + 1
+    for i in range(N - 1):
+        for j in range(M - 1):
+            v1 = M * i + j
+            v2 = M * (i + 1) + j
+            v3 = M * i + j + 1
+            v4 = M * (i + 1) + j + 1
 
             if j % 2 == 0:
                 triangle_inds.append([v1, v2, v3])
@@ -74,14 +75,10 @@ def equilateral_mesh(R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=No
     return x.flatten(), y.flatten(), array(triangle_inds)
 
 
-
-
 def rotate(R, z, angle, pivot):
-    d = sqrt((R - pivot[0])**2 + (z - pivot[1])**2)
+    d = sqrt((R - pivot[0]) ** 2 + (z - pivot[1]) ** 2)
     theta = arctan2(z - pivot[1], R - pivot[0]) + angle
-    return d*cos(theta) + pivot[0], d*sin(theta) + pivot[1]
-
-
+    return d * cos(theta) + pivot[0], d * sin(theta) + pivot[1]
 
 
 def trim_vertices(R, z, triangles, trim_bools):
@@ -108,17 +105,15 @@ def trim_vertices(R, z, triangles, trim_bools):
         specified vertices removed.
     """
     vert_inds = (~trim_bools).nonzero()[0]
-    tri_bools = in1d(triangles[:,0],vert_inds)
-    tri_bools &= in1d(triangles[:,1],vert_inds)
-    tri_bools &= in1d(triangles[:,2],vert_inds)
+    tri_bools = in1d(triangles[:, 0], vert_inds)
+    tri_bools &= in1d(triangles[:, 1], vert_inds)
+    tri_bools &= in1d(triangles[:, 2], vert_inds)
     tri_inds = tri_bools.nonzero()[0]
     index_converter = zeros(R.size, dtype=int64)
     index_converter[vert_inds] = arange(vert_inds.size)
-    trim_triangles = index_converter[triangles[tri_inds,:]]
+    trim_triangles = index_converter[triangles[tri_inds, :]]
     trim_triangles.sort(axis=1)
     return R[vert_inds], z[vert_inds], trim_triangles
-
-
 
 
 class Polygon(object):
@@ -132,6 +127,7 @@ class Polygon(object):
     :param y: \
         The y-values of the polygon vertices as a 1D numpy array.
     """
+
     def __init__(self, x, y):
         self.x = array(x)
         self.y = array(y)
@@ -145,10 +141,13 @@ class Polygon(object):
         self.dy = diff(self.y)
         self.im = full(self.dx.size, fill_value=nan)
         self.c = full(self.dx.size, fill_value=nan)
-        im_inds = (self.dy != 0.).nonzero()[0]
-        c_inds = (self.dx != 0.).nonzero()[0]
+        im_inds = (self.dy != 0.0).nonzero()[0]
+        c_inds = (self.dx != 0.0).nonzero()[0]
         self.im[im_inds] = self.dx[im_inds] / self.dy[im_inds]
-        self.c[c_inds] = self.y[:-1][c_inds] - self.x[:-1][c_inds]*self.dy[c_inds]/self.dx[c_inds]
+        self.c[c_inds] = (
+            self.y[:-1][c_inds]
+            - self.x[:-1][c_inds] * self.dy[c_inds] / self.dx[c_inds]
+        )
 
         # pre-calculate the bounding rectangle of each edge for intersection testing
         self.x_upr = maximum(self.x[1:], self.x[:-1])
@@ -157,15 +156,15 @@ class Polygon(object):
         self.y_lwr = minimum(self.y[1:], self.y[:-1])
 
         # normalise the unit vectors
-        self.lengths = sqrt(self.dx**2 + self.dy**2)
+        self.lengths = sqrt(self.dx ** 2 + self.dy ** 2)
         self.dx /= self.lengths
         self.dy /= self.lengths
 
-        self.zero_im = self.im == 0.
+        self.zero_im = self.im == 0.0
 
     def is_inside(self, v):
         x, y = v
-        k = (y - self.c)*self.im
+        k = (y - self.c) * self.im
 
         limits_check = (self.y_lwr < y) & (y < self.y_upr) & (x < self.x_upr)
         isec_check = (x < k) | self.zero_im
@@ -177,11 +176,11 @@ class Polygon(object):
         dx = x - self.x[:-1]
         dy = y - self.y[:-1]
 
-        L = (dx*self.dx + dy*self.dy) / self.lengths
-        D = dx*self.dy - dy*self.dx
+        L = (dx * self.dx + dy * self.dy) / self.lengths
+        D = dx * self.dy - dy * self.dx
         booles = (0 <= L) & (L <= 1)
 
-        points_min = sqrt(dx**2 + dy**2).min()
+        points_min = sqrt(dx ** 2 + dy ** 2).min()
 
         if booles.any():
             perp_min = abs(D[booles]).min()
@@ -195,42 +194,41 @@ class Polygon(object):
         xmax = self.x.max()
         ymin = self.y.min()
         ymax = self.y.max()
-        xpad = (xmax-xmin)*0.15
-        ypad = (ymax-ymin)*0.15
+        xpad = (xmax - xmin) * 0.15
+        ypad = (ymax - ymin) * 0.15
 
         N = 200
-        x_ax = linspace(xmin-xpad, xmax+xpad, N)
-        y_ax = linspace(ymin-ypad, ymax+ypad, N)
+        x_ax = linspace(xmin - xpad, xmax + xpad, N)
+        y_ax = linspace(ymin - ypad, ymax + ypad, N)
 
-        inside = zeros([N,N])
-        distance = zeros([N,N])
+        inside = zeros([N, N])
+        distance = zeros([N, N])
         for i in range(N):
             for j in range(N):
                 v = [x_ax[i], y_ax[j]]
-                inside[i,j] = self.is_inside(v)
-                distance[i,j] = self.distance(v)
+                inside[i, j] = self.is_inside(v)
+                distance[i, j] = self.distance(v)
 
         import matplotlib.pyplot as plt
-        fig = plt.figure(figsize=(12,4))
+
+        fig = plt.figure(figsize=(12, 4))
         ax1 = fig.add_subplot(131)
         ax1.contourf(x_ax, y_ax, inside.T)
-        ax1.plot(self.x, self.y, '.-', c='white', lw=2)
-        ax1.set_title('point is inside polygon')
+        ax1.plot(self.x, self.y, ".-", c="white", lw=2)
+        ax1.set_title("point is inside polygon")
 
         ax2 = fig.add_subplot(132)
         ax2.contourf(x_ax, y_ax, distance.T, 100)
-        ax2.plot(self.x, self.y, '.-', c='white', lw=2)
-        ax2.set_title('distance from polygon')
+        ax2.plot(self.x, self.y, ".-", c="white", lw=2)
+        ax2.set_title("distance from polygon")
 
         ax3 = fig.add_subplot(133)
-        ax3.contourf(x_ax, y_ax, (distance*inside).T, 100)
-        ax3.plot(self.x, self.y, '.-', c='white', lw=2)
-        ax3.set_title('interior point distance from polygon')
+        ax3.contourf(x_ax, y_ax, (distance * inside).T, 100)
+        ax3.plot(self.x, self.y, ".-", c="white", lw=2)
+        ax3.set_title("interior point distance from polygon")
 
         plt.tight_layout()
         plt.show()
-
-
 
 
 def find_boundaries(triangles):
@@ -255,7 +253,10 @@ def find_boundaries(triangles):
     # now create a map between an edge, and the other edges to which it's connected
     boundary_connections = {}
     for i in range(boundary_edges.shape[0]):
-        edges = ((boundary_edges[i, 0] == boundary_edges) | (boundary_edges[i, 1] == boundary_edges)).nonzero()[0]
+        edges = (
+            (boundary_edges[i, 0] == boundary_edges)
+            | (boundary_edges[i, 1] == boundary_edges)
+        ).nonzero()[0]
         boundary_connections[i] = [e for e in edges if e != i]
 
     # we use a set to keep track of which edges have already been used as part of a boundary
@@ -293,15 +294,15 @@ def find_boundaries(triangles):
     for boundary in boundaries:
         # the order of the first two vertex indices needs to match the direction
         # in which the boundary is being traced.
-        v1, v2 = edge_vertices[boundary[0],:]
-        if v1 in edge_vertices[boundary[1],:]:
+        v1, v2 = edge_vertices[boundary[0], :]
+        if v1 in edge_vertices[boundary[1], :]:
             vertex_boundary = [v2, v1]
         else:
             vertex_boundary = [v1, v2]
 
         # now loop over all the other edges and add the new vertex that appears
         for edge in boundary[1:]:
-            v1, v2 = edge_vertices[edge,:]
+            v1, v2 = edge_vertices[edge, :]
             next_vertex = v1 if (v1 not in vertex_boundary) else v2
             vertex_boundary.append(next_vertex)
 
@@ -310,9 +311,9 @@ def find_boundaries(triangles):
     return vertex_boundaries
 
 
-
-
-def build_central_mesh(R_boundary, z_boundary, resolution, padding_factor=1., rotation=None):
+def build_central_mesh(
+    R_boundary, z_boundary, resolution, padding_factor=1.0, rotation=None
+):
     """
     Generate an equilateral mesh which fills the space inside a given boundary,
     up to a chosen distance to the boundary edge.
@@ -343,24 +344,31 @@ def build_central_mesh(R_boundary, z_boundary, resolution, padding_factor=1., ro
         in the mesh, where ``N`` is the total number of triangles.
     """
     poly = Polygon(R_boundary, z_boundary)
-    pad = 2*0.5*sqrt(3)
+    pad = 2 * 0.5 * sqrt(3)
     if rotation is None:
         R_range = (R_boundary.min() - pad, R_boundary.max() + pad)
         z_range = (z_boundary.min() - pad, z_boundary.max() + pad)
-        R, z, triangles = equilateral_mesh(R_range=R_range, z_range=z_range, resolution=resolution)
+        R, z, triangles = equilateral_mesh(
+            R_range=R_range, z_range=z_range, resolution=resolution
+        )
     else:
-        rot_R, rot_z = rotate(R_boundary, z_boundary, -rotation, [0., 0.])
+        rot_R, rot_z = rotate(R_boundary, z_boundary, -rotation, [0.0, 0.0])
         R_range = (rot_R.min() - pad, rot_R.max() + pad)
         z_range = (rot_z.min() - pad, rot_z.max() + pad)
-        R, z, triangles = equilateral_mesh(R_range=R_range, z_range=z_range, resolution=resolution)
-        R, z = rotate(R, z, rotation, [0., 0.])
+        R, z, triangles = equilateral_mesh(
+            R_range=R_range, z_range=z_range, resolution=resolution
+        )
+        R, z = rotate(R, z, rotation, [0.0, 0.0])
 
     # remove all triangles which are too close too or inside walls
-    bools = array([poly.is_inside(p) * poly.distance(p) < resolution * padding_factor for p in zip(R, z)])
+    bools = array(
+        [
+            poly.is_inside(p) * poly.distance(p) < resolution * padding_factor
+            for p in zip(R, z)
+        ]
+    )
 
     return trim_vertices(R, z, triangles, bools)
-
-
 
 
 def refine_mesh(R, z, triangles, refinement_bools):
@@ -400,20 +408,24 @@ def refine_mesh(R, z, triangles, refinement_bools):
     for t in range(triangles.shape[0]):
         # for the current triangle, find which of its neighbours are being refined
         refined_neighbours = []
-        for edge in triangle_edges[t,:]:
-            refined_neighbours.extend([i for i in edge_to_triangles[edge] if i != t and i in refine_set])
+        for edge in triangle_edges[t, :]:
+            refined_neighbours.extend(
+                [i for i in edge_to_triangles[edge] if i != t and i in refine_set]
+            )
 
-        vertices = [(R[i], z[i]) for i in triangles[t,:]]
+        vertices = [(R[i], z[i]) for i in triangles[t, :]]
 
         # if either the triangle itself, or all of its neighbours, are being refined, it must be quadrisected
         if t in refine_set or len(refined_neighbours) == 3:
             v1, v2, v3 = vertices
             # get the mid-point of each side
-            m12 = (0.5*(v1[0] + v2[0]), 0.5*(v1[1] + v2[1]))
-            m23 = (0.5*(v2[0] + v3[0]), 0.5*(v2[1] + v3[1]))
-            m31 = (0.5*(v3[0] + v1[0]), 0.5*(v3[1] + v1[1]))
+            m12 = (0.5 * (v1[0] + v2[0]), 0.5 * (v1[1] + v2[1]))
+            m23 = (0.5 * (v2[0] + v3[0]), 0.5 * (v2[1] + v3[1]))
+            m31 = (0.5 * (v3[0] + v1[0]), 0.5 * (v3[1] + v1[1]))
             # add the new triangles
-            new_mesh_triangles.extend([[v1, m12, m31], [v2, m12, m23], [v3, m23, m31], [m12, m23, m31]])
+            new_mesh_triangles.extend(
+                [[v1, m12, m31], [v2, m12, m23], [v3, m23, m31], [m12, m23, m31]]
+            )
 
         # if no neighbours are being refined, the triangle remains unchanged
         elif len(refined_neighbours) == 0:
@@ -422,18 +434,29 @@ def refine_mesh(R, z, triangles, refinement_bools):
         # if the triangle has two refined neighbours, it must be trisected
         elif len(refined_neighbours) == 2:
             # first we need to find the two edges shared with the neighbours
-            shared_edges = [intersect1d(triangle_edges[k,:], triangle_edges[t,:]) for k in refined_neighbours]
+            shared_edges = [
+                intersect1d(triangle_edges[k, :], triangle_edges[t, :])
+                for k in refined_neighbours
+            ]
 
             # now find the point that these two edges share
-            shared_vertex_index = intersect1d(*[edge_vertices[k,:] for k in shared_edges])
+            shared_vertex_index = intersect1d(
+                *[edge_vertices[k, :] for k in shared_edges]
+            )
             shared_vertex = (R[shared_vertex_index[0]], z[shared_vertex_index[0]])
 
             # get the two points which are not shared
             v1, v2 = [v for v in vertices if v != shared_vertex]
 
             # get the mid points of the shared sides
-            midpoint_1 = (0.5*(v1[0]+shared_vertex[0]), 0.5*(v1[1]+shared_vertex[1]))
-            midpoint_2 = (0.5*(v2[0]+shared_vertex[0]), 0.5*(v2[1]+shared_vertex[1]))
+            midpoint_1 = (
+                0.5 * (v1[0] + shared_vertex[0]),
+                0.5 * (v1[1] + shared_vertex[1]),
+            )
+            midpoint_2 = (
+                0.5 * (v2[0] + shared_vertex[0]),
+                0.5 * (v2[1] + shared_vertex[1]),
+            )
 
             # add the new triangles
             new_mesh_triangles.append([midpoint_1, midpoint_2, shared_vertex])
@@ -443,19 +466,21 @@ def refine_mesh(R, z, triangles, refinement_bools):
         # if the triangle has one refined neighbour, it must be bisected
         elif len(refined_neighbours) == 1:
             # find the shared edge
-            shared_edge = intersect1d(triangle_edges[refined_neighbours[0],:], triangle_edges[t,:])
+            shared_edge = intersect1d(
+                triangle_edges[refined_neighbours[0], :], triangle_edges[t, :]
+            )
 
             # get the vertices of the shared edge
-            v1, v2 = [(R[i], z[i]) for i in edge_vertices[shared_edge,:].squeeze()]
+            v1, v2 = [(R[i], z[i]) for i in edge_vertices[shared_edge, :].squeeze()]
 
             # get the remaining vertex
             v3 = [v for v in vertices if v not in [v1, v2]][0]
 
             # get the midpoint of the shared edge
-            midpoint = (0.5*(v1[0]+v2[0]), 0.5*(v1[1]+v2[1]))
+            midpoint = (0.5 * (v1[0] + v2[0]), 0.5 * (v1[1] + v2[1]))
             new_mesh_triangles.extend([[midpoint, v3, v1], [midpoint, v3, v2]])
         else:
-            raise ValueError('more than 3 refined neighbours detected')
+            raise ValueError("more than 3 refined neighbours detected")
 
     # number all the vertices
     vertex_map = {}
@@ -467,11 +492,11 @@ def refine_mesh(R, z, triangles, refinement_bools):
     # build the mesh data arrays
     new_R = array([v[0] for v in vertex_map.keys()])
     new_z = array([v[1] for v in vertex_map.keys()])
-    new_triangles = array([[vertex_map[v] for v in verts] for verts in new_mesh_triangles], dtype=int64)
+    new_triangles = array(
+        [[vertex_map[v] for v in verts] for verts in new_mesh_triangles], dtype=int64
+    )
 
     return new_R, new_z, new_triangles
-
-
 
 
 def remove_duplicate_vertices(R, z, triangles):
@@ -480,13 +505,17 @@ def remove_duplicate_vertices(R, z, triangles):
     # first, find duplicate vertices (including those which differ only by numerical error)
     not_duplicates = ones(R2.size, dtype=bool)
     indices = arange(R2.size, dtype=int64)
-    for i in range(R2.size-1):
-        bools = isclose(R2[i+1:], R2[i]) & isclose(z2[i+1:], z2[i]) & not_duplicates[i+1:]
+    for i in range(R2.size - 1):
+        bools = (
+            isclose(R2[i + 1 :], R2[i])
+            & isclose(z2[i + 1 :], z2[i])
+            & not_duplicates[i + 1 :]
+        )
         if bools.any():
-            R2[i+1:][bools] = R2[i]
-            z2[i+1:][bools] = z2[i]
-            not_duplicates[i+1:] &= (~bools)
-            indices[i+1:][bools] = i
+            R2[i + 1 :][bools] = R2[i]
+            z2[i + 1 :][bools] = z2[i]
+            not_duplicates[i + 1 :] &= ~bools
+            indices[i + 1 :][bools] = i
 
     # build a new mesh out of the unique vertices
     unique_vals, inverse = unique(indices, return_inverse=True)
@@ -500,10 +529,15 @@ def remove_duplicate_vertices(R, z, triangles):
     return new_R, new_z, new_triangles
 
 
-
-
-def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None, edge_padding=0.75,
-                   edge_max_area=1.1, rotation=None):
+def mesh_generator(
+    R_boundary,
+    z_boundary,
+    resolution=0.03,
+    edge_resolution=None,
+    edge_padding=0.75,
+    edge_max_area=1.1,
+    rotation=None,
+):
     """
     Generate a triangular mesh which fills the space inside a given boundary using a 2-stage
     process. First, a mesh of equilateral triangles is created which fills the space up to a
@@ -555,7 +589,7 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
         z_boundary=z_boundary,
         resolution=resolution,
         padding_factor=edge_padding,
-        rotation=rotation
+        rotation=rotation,
     )
 
     # now construct the boundary for the central mesh
@@ -570,7 +604,7 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
     # prepare triangle inputs:
     if edge_resolution is None:
         edge_resolution = resolution
-    eq_area = (edge_resolution**2) * 0.25 * sqrt(3)
+    eq_area = (edge_resolution ** 2) * 0.25 * sqrt(3)
     area_multiplier = edge_max_area
 
     outer = (R_boundary, z_boundary)
@@ -582,12 +616,15 @@ def mesh_generator(R_boundary, z_boundary, resolution=0.03, edge_resolution=None
         outer_boundary=outer,
         inner_boundary=inner,
         void_markers=voids,
-        max_area=eq_area*area_multiplier)
+        max_area=eq_area * area_multiplier,
+    )
 
     # combine the central and edge meshes
     R = concatenate([central_R, edge_R])
     z = concatenate([central_z, edge_z])
-    triangles = concatenate([central_triangles, edge_triangles + central_R.size], axis=0)
+    triangles = concatenate(
+        [central_triangles, edge_triangles + central_R.size], axis=0
+    )
     R, z, triangles = remove_duplicate_vertices(R, z, triangles)
 
     return R, z, triangles
