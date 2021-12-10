@@ -1,28 +1,72 @@
-name: Upload Python Package
-
+name: Build Wheels
 on:
-  release:
-    types: [published]
+  push:
+    branches: [cythonise]
+  create:
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  build_wheels:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, windows-2022, macos-10.15]
+    runs-on: ${{ matrix.os }}
+    name: Build wheels on ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: arm64
+
+      - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
-      - name: Install dependencies
+          python-version: 3.9
+
+      - name: Prepare
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-      - name: Build package
-        run: python -m build --sdist --wheel
-      - name: Check build
-        run: twine check dist/*
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@release/v1
+          pip install .[tests]
+
+      - name: Build
+        uses: pypa/cibuildwheel@v2.2.2
+        env:
+          CIBW_TEST_REQUIRES: "pytest"
+          CIBW_TEST_COMMAND: "pytest"
+          CIBW_ARCHS_LINUX: auto aarch64
+          CIBW_ARCHS_MACOS: x86_64 universal2 arm64
+          CIBW_SKIP: pp*
+
+      - name: Upload Wheels
+        uses: actions/upload-artifact@v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}
+          name: dist
+          path: wheelhouse
+
+  # deploy:
+  #   name: Deploy
+  #   environment: release
+  #   needs: build-wheels
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v2.3.4
+  #   - name: Login
+  #     run: |
+  #       echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+  #   - name: Download disctributions
+  #     uses: actions/download-artifact@v2
+  #     with:
+  #       name: dist
+  #       path: dist    
+  #   - name: Check build
+  #     run: twine check dist/*
+  #   - name: Publish package
+  #     uses: pypa/gh-action-pypi-publish@release/v1
+  #     with:
+  #       user: __token__
+  #       password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}

@@ -6,7 +6,7 @@ ext_modules = [
         "tokamesh.triangle.triangulate",
         sources=["tokamesh/triangle/triangulate.pyx", "tokamesh/triangle/triangle.c"],
         libraries=["m"],
-        define_macros=[("REAL", "double"), ("TRILIBRARY", None)],
+        define_macros=[("REAL", "double"), ("TRILIBRARY", None), ("NO_TIMER", None)],
     )
 ]
 
