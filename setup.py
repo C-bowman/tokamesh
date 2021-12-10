@@ -1,3 +1,13 @@
-from setuptools import setup
+from setuptools import setup, Extension
+from Cython.Build import cythonize
 
-setup()
+ext_modules = [
+    Extension(
+        "tokamesh.triangle.triangulate",
+        sources=["tokamesh/triangle/triangulate.pyx", "tokamesh/triangle/triangle.c"],
+        libraries=["m"],
+        define_macros=[("REAL", "double"), ("TRILIBRARY", None)],
+    )
+]
+
+setup(ext_modules=cythonize(ext_modules, gdb_debug=True, language_level=3))
