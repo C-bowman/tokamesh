@@ -37,7 +37,6 @@ jobs:
         env:
           CIBW_ARCHS_LINUX: auto aarch64
           CIBW_ARCHS_MACOS: x86_64 universal2 arm64
-          CIBW_SKIP: pp*
 
       - name: Upload Wheels
         uses: actions/upload-artifact@v1
