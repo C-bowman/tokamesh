@@ -1,8 +1,8 @@
 name: Build Wheels
+
 on:
-  push:
-    branches: [cythonise]
-  create:
+  release:
+    types: [published]
 
 jobs:
   build_wheels:
@@ -72,11 +72,8 @@ jobs:
         name: dist
         path: dist
 
-    - name: Check build
-      run: twine check dist/*
-
-    # - name: Publish package
-    #   uses: pypa/gh-action-pypi-publish@release/v1
-    #   with:
-    #     user: __token__
-    #     password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}
+    - name: Publish package
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}
