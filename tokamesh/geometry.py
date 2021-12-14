@@ -2,7 +2,7 @@ from numpy import sqrt, log, pi, tan, dot, cross, identity
 from numpy import absolute, nan, isfinite, minimum, maximum
 from numpy import array, ndarray, linspace, full, zeros, stack, savez, int64
 from collections import defaultdict
-from time import time
+from time import perf_counter
 import sys
 
 
@@ -126,9 +126,9 @@ class BarycentricGeometryMatrix(object):
         # clear the geometry factors in case they contains data from a previous calculation
         self.GeomFacs.vertex_map.clear()
         # process the first triangle so we can estimate the run-time
-        t_start = time()
+        t_start = perf_counter()
         self.process_triangle(0)
-        dt = time() - t_start
+        dt = perf_counter() - t_start
 
         # use the estimate to break the evaluation into groups
         group_size = max(int(1.0 / dt), 1)
@@ -144,7 +144,7 @@ class BarycentricGeometryMatrix(object):
 
             # print the progress
             f_complete = (end + 1) / self.n_triangles
-            eta = int((time() - t_start) * (1 - f_complete) / f_complete)
+            eta = int((perf_counter() - t_start) * (1 - f_complete) / f_complete)
             sys.stdout.write(
                 f"\r >> Calculating geometry matrix:  [ {f_complete:.1%} complete   ETA: {eta} sec ]           "
             )
@@ -157,7 +157,7 @@ class BarycentricGeometryMatrix(object):
                 for i in range(self.n_triangles - rem, self.n_triangles)
             ]
 
-        t_elapsed = time() - t_start
+        t_elapsed = perf_counter() - t_start
         mins, secs = divmod(t_elapsed, 60)
         hrs, mins = divmod(mins, 60)
         time_taken = "%d:%02d:%02d" % (hrs, mins, secs)
