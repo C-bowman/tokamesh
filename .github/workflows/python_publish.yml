@@ -44,26 +44,39 @@ jobs:
           name: dist
           path: wheelhouse
 
-  # deploy:
-  #   name: Deploy
-  #   environment: release
-  #   needs: build-wheels
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Checkout
-  #     uses: actions/checkout@v2.3.4
-  #   - name: Login
-  #     run: |
-  #       echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-  #   - name: Download disctributions
-  #     uses: actions/download-artifact@v2
-  #     with:
-  #       name: dist
-  #       path: dist    
-  #   - name: Check build
-  #     run: twine check dist/*
-  #   - name: Publish package
-  #     uses: pypa/gh-action-pypi-publish@release/v1
-  #     with:
-  #       user: __token__
-  #       password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}
+  make_sdist:
+    name: Make SDist
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build SDist
+      run: pipx run build --sdist
+
+    - uses: actions/upload-artifact@v2
+      with:
+        path: dist/*.tar.gz
+
+  deploy:
+    name: Deploy
+    environment: release
+    needs: [build_wheels, make_sdist]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Download distributions
+      uses: actions/download-artifact@v2
+      with:
+        name: dist
+        path: dist
+
+    - name: Check build
+      run: twine check dist/*
+
+    # - name: Publish package
+    #   uses: pypa/gh-action-pypi-publish@release/v1
+    #   with:
+    #     user: __token__
+    #     password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}
