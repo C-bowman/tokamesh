@@ -20,9 +20,7 @@ import pytest
 def test_edge_rectangle_intersection_on_axis_square_no_intersection(R_edges, z_edges):
     """Check various lines that don't intersect with the unit square"""
 
-    intersections = edge_rectangle_intersection(
-        (0, 1), (0, 1), np.array(R_edges, ndmin=2), np.array(z_edges, ndmin=2)
-    )
+    intersections = edge_rectangle_intersection((0, 1), (0, 1), R_edges, z_edges)
 
     assert intersections.size == 0
 
@@ -60,9 +58,7 @@ def test_edge_rectangle_intersection_on_axis_square(
 ):
     """Check various lines that don't intersect with the unit square"""
 
-    intersections = edge_rectangle_intersection(
-        (0, 1), (0, 1), np.array(R_edges, ndmin=2), np.array(z_edges, ndmin=2)
-    )
+    intersections = edge_rectangle_intersection((0, 1), (0, 1), R_edges, z_edges)
 
     assert intersections.size == 1
     assert np.array_equal(intersections, expected_intersections)
@@ -100,3 +96,10 @@ def test_edge_rectangle_intersection_on_axis_square_multiple():
     intersections = edge_rectangle_intersection((0, 1), (0, 1), R_edges, z_edges)
 
     assert np.array_equal(intersections, expected_intersections)
+
+
+def test_edge_rectangle_intersection_bad_inputs():
+    with pytest.raises(ValueError):
+        edge_rectangle_intersection((0, 1), (0, 1), 1, (0, 1))
+    with pytest.raises(ValueError):
+        edge_rectangle_intersection((0, 1), (0, 1), (0, 1), 1)
