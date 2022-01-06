@@ -237,8 +237,8 @@ def find_boundaries(triangles):
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape ``(N,3)`` where ``N`` is
-        the total number of triangles.
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
 
     :return: \
         A list of 1D numpy arrays containing the indices of the vertices in each boundary.
@@ -360,7 +360,7 @@ def build_central_mesh(
         )
         R, z = rotate(R, z, rotation, [0.0, 0.0])
 
-    # remove all triangles which are too close too or inside walls
+    # remove all triangles which are too close to or inside walls
     bools = array(
         [
             poly.is_inside(p) * poly.distance(p) < resolution * padding_factor

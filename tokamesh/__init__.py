@@ -212,9 +212,8 @@ class TriangularMesh(object):
             # only need to proceed if the current coordinate contains triangles
             key = (v[0], v[1])
             if key in self.tree_map:
-                search_triangles = self.tree_map[
-                    key
-                ]  # the triangles intersecting this cell
+                # get triangles intersecting this cell
+                search_triangles = self.tree_map[key]
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
                 # index of the triangle which contains them
@@ -269,9 +268,8 @@ class TriangularMesh(object):
             # only need to proceed if the current coordinate contains triangles
             key = (v[0], v[1])
             if key in self.tree_map:
-                search_triangles = self.tree_map[
-                    key
-                ]  # the triangles intersecting this cell
+                # get triangles intersecting this cell
+                search_triangles = self.tree_map[key]
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
                 # index of the triangle which contains them

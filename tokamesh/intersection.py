@@ -24,7 +24,7 @@ def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
         of edges.
 
     :return intersections: \
-        An array containing the indices of any of the edges which intersect
+        An array containing the indices of any edges which intersect
         the specified rectangle.
     """
     # first rule out the majority of edges in the mesh
