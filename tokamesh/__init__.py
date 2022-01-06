@@ -89,11 +89,13 @@ class TriangularMesh(object):
         z1, z2, z3 = [self.z[self.triangle_vertices[:, k]] for k in range(3)]
         self.area = 0.5 * ((z2 - z3) * (R1 - R3) + (R3 - R2) * (z1 - z3))
         self.lam1_coeffs = (
-            0.5 * stack([z2 - z3, R3 - R2, R2 * z3 - R3 * z2], axis=1)
+            0.5
+            * stack([z2 - z3, R3 - R2, R2 * z3 - R3 * z2], axis=1)
             / self.area[:, None]
         )
         self.lam2_coeffs = (
-            0.5 * stack([z3 - z1, R1 - R3, R3 * z1 - R1 * z3], axis=1)
+            0.5
+            * stack([z3 - z1, R1 - R3, R3 * z1 - R1 * z3], axis=1)
             / self.area[:, None]
         )
 
