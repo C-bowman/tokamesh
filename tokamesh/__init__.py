@@ -89,13 +89,11 @@ class TriangularMesh(object):
         z1, z2, z3 = [self.z[self.triangle_vertices[:, k]] for k in range(3)]
         self.area = 0.5 * ((z2 - z3) * (R1 - R3) + (R3 - R2) * (z1 - z3))
         self.lam1_coeffs = (
-            0.5
-            * stack([z2 - z3, R3 - R2, R2 * z3 - R3 * z2], axis=1)
+            0.5 * stack([z2 - z3, R3 - R2, R2 * z3 - R3 * z2], axis=1)
             / self.area[:, None]
         )
         self.lam2_coeffs = (
-            0.5
-            * stack([z3 - z1, R1 - R3, R3 * z1 - R1 * z3], axis=1)
+            0.5 * stack([z3 - z1, R1 - R3, R3 * z1 - R1 * z3], axis=1)
             / self.area[:, None]
         )
 
@@ -212,9 +210,8 @@ class TriangularMesh(object):
             # only need to proceed if the current coordinate contains triangles
             key = (v[0], v[1])
             if key in self.tree_map:
-                search_triangles = self.tree_map[
-                    key
-                ]  # the triangles intersecting this cell
+                # get triangles intersecting this cell
+                search_triangles = self.tree_map[key]
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
                 # index of the triangle which contains them
@@ -269,9 +266,8 @@ class TriangularMesh(object):
             # only need to proceed if the current coordinate contains triangles
             key = (v[0], v[1])
             if key in self.tree_map:
-                search_triangles = self.tree_map[
-                    key
-                ]  # the triangles intersecting this cell
+                # get triangles intersecting this cell
+                search_triangles = self.tree_map[key]
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
                 # index of the triangle which contains them

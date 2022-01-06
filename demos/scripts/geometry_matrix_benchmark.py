@@ -70,9 +70,8 @@ matrix_integrals = G.dot(field)
 
 # manually calculate the line integrals for comparison
 L = linspace(0, 0.5, 3000)  # build a distance axis for the integrals
-R_projection, z_projection = cam.project_rays(
-    L
-)  # get the position of each ray at each distance
+# get the position of each ray at each distance
+R_projection, z_projection = cam.project_rays(L)
 # directly integrate along each ray
 direct_integrals = zeros(R_projection.shape[1])
 for i in range(R_projection.shape[1]):

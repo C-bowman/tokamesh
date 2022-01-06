@@ -371,9 +371,9 @@ class BarycentricGeometryMatrix(object):
                 """
             )
 
-        dim_check = ray_starts.ndim != 2 or ray_ends.ndim != 2
         if (
-            dim_check
+            ray_starts.ndim != 2
+            or ray_ends.ndim != 2
             or ray_starts.shape[1] != 3
             or ray_ends.shape[1] != 3
             or ray_ends.shape[0] != ray_starts.shape[0]
