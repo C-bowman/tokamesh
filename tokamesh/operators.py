@@ -1,10 +1,9 @@
-
 from numpy import array, full, ones, arange, tile, diff, sqrt, concatenate
 from scipy.sparse import csc_matrix, csr_matrix
 from tokamesh.geometry import build_edge_map
 
 
-def edge_difference_matrix(R, z, triangles, normalised=False, sparse_format='csr'):
+def edge_difference_matrix(R, z, triangles, normalised=False, sparse_format="csr"):
     """
     Generates a sparse matrix which, when operating on a vector of field
     values at each vertex, produces a vector of the differences in those
@@ -33,30 +32,35 @@ def edge_difference_matrix(R, z, triangles, normalised=False, sparse_format='csr
     triangle_edges, edge_vertices, edge_map = build_edge_map(triangles)
     n_edges = edge_vertices.shape[0]
     shape = (n_edges, R.size)
-    entry_vals = ones(2*n_edges)
+    entry_vals = ones(2 * n_edges)
 
     if normalised:
         dR = diff(R[edge_vertices], axis=1)
         dz = diff(z[edge_vertices], axis=1)
-        inv_distances = 1. / sqrt(dR**2 + dz**2)
+        inv_distances = 1.0 / sqrt(dR ** 2 + dz ** 2)
         entry_vals[0::2] = inv_distances
         entry_vals[1::2] = -inv_distances
     else:
-        entry_vals[1::2] = -1.
+        entry_vals[1::2] = -1.0
 
-    row_inds = tile(arange(n_edges), (1,2)).T.flatten()
+    row_inds = tile(arange(n_edges), (1, 2)).T.flatten()
     col_inds = edge_vertices.T.flatten()
-    sparse_format = sparse_format if sparse_format in ['csr', 'csc'] else 'csr'
-    if sparse_format == 'csr':
+    sparse_format = sparse_format if sparse_format in ["csr", "csc"] else "csr"
+    if sparse_format == "csr":
         return csr_matrix((entry_vals, (row_inds, col_inds)), shape=shape)
-    elif sparse_format == 'csc':
+    elif sparse_format == "csc":
         return csc_matrix((entry_vals, (row_inds, col_inds)), shape=shape)
 
 
-
-
-def umbrella_matrix(R, z, triangles, ignore_boundary=True, inverse_distance_weighting=True,
-                    normalised=False, sparse_format='csr'):
+def umbrella_matrix(
+    R,
+    z,
+    triangles,
+    ignore_boundary=True,
+    inverse_distance_weighting=True,
+    normalised=False,
+    sparse_format="csr",
+):
     """
     returns a sparse 'umbrella' matrix operator, which finds the difference between
     the value of every internal vertex value and the average value of the other
@@ -96,7 +100,9 @@ def umbrella_matrix(R, z, triangles, ignore_boundary=True, inverse_distance_weig
 
     if ignore_boundary:
         boundary_edges = [i for i in range(len(edge_map)) if len(edge_map[i]) == 1]
-        boundary_vertex_set = {edge_vertices[i, 0] for i in boundary_edges} | {edge_vertices[i, 1] for i in boundary_edges}
+        boundary_vertex_set = {edge_vertices[i, 0] for i in boundary_edges} | {
+            edge_vertices[i, 1] for i in boundary_edges
+        }
         verts = {i for i in range(R.size)} - boundary_vertex_set
     else:
         verts = range(R.size)
@@ -105,22 +111,22 @@ def umbrella_matrix(R, z, triangles, ignore_boundary=True, inverse_distance_weig
     col_inds_list = []
     entry_vals_list = []
     for i in verts:
-        inds = ((edge_vertices[:,0] == i) | (edge_vertices[:,1] == i)).nonzero()[0]
+        inds = ((edge_vertices[:, 0] == i) | (edge_vertices[:, 1] == i)).nonzero()[0]
         col_inds = [i]
-        col_inds.extend([j for j in edge_vertices[inds,:].flatten() if i != j])
+        col_inds.extend([j for j in edge_vertices[inds, :].flatten() if i != j])
         col_inds = array(col_inds, dtype=int)
-        distances = sqrt((R[i] - R[col_inds[1:]])**2 + (z[i] - z[col_inds[1:]])**2)
+        distances = sqrt((R[i] - R[col_inds[1:]]) ** 2 + (z[i] - z[col_inds[1:]]) ** 2)
         row_inds = full(col_inds.size, fill_value=i, dtype=int)
         weights = full(col_inds.size, fill_value=-1.0)
 
         if inverse_distance_weighting:
-            inv_distances = 1. / distances
+            inv_distances = 1.0 / distances
             weights[1:] = inv_distances / inv_distances.sum()
         else:
-            weights[1:] = 1. / (col_inds.size - 1.)
+            weights[1:] = 1.0 / (col_inds.size - 1.0)
 
         if normalised:
-            weights /= (2.6*distances.mean()**2)
+            weights /= 2.6 * distances.mean() ** 2
 
         row_inds_list.append(row_inds)
         col_inds_list.append(col_inds)
@@ -131,7 +137,7 @@ def umbrella_matrix(R, z, triangles, ignore_boundary=True, inverse_distance_weig
     entry_values = concatenate(entry_vals_list)
 
     shape = (R.size, R.size)
-    if sparse_format == 'csr':
+    if sparse_format == "csr":
         return csr_matrix((entry_values, (row_indices, col_indices)), shape=shape)
-    elif sparse_format == 'csc':
+    elif sparse_format == "csc":
         return csc_matrix((entry_values, (row_indices, col_indices)), shape=shape)

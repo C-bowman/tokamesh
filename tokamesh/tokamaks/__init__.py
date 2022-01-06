@@ -1,6 +1,6 @@
-
 from numpy import load
 import os
+
 tokamaks_dir = os.path.abspath(__file__)[:-11]
 
 
@@ -15,8 +15,8 @@ def mastu_boundary(lower_divertor=False):
          The major-radius and z-height values of the boundary are returned as two 1D
          numpy arrays `R_boundary` and `z_boundary`.
     """
-    boundary_data = load(tokamaks_dir+'mastu_boundary_data.npz')
+    boundary_data = load(tokamaks_dir + "mastu_boundary_data.npz")
     if lower_divertor:
-        return boundary_data['R_lower_divertor'], boundary_data['z_lower_divertor']
+        return boundary_data["R_lower_divertor"], boundary_data["z_lower_divertor"]
     else:
-        return boundary_data['R'], boundary_data['z']
+        return boundary_data["R"], boundary_data["z"]
