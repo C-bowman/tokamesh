@@ -1428,7 +1428,8 @@ int size;
 {
   VOID *memptr;
 
-  memptr = (VOID *) malloc((unsigned int) size);
+  /* Change to calloc to avoid/hide bug when used as a library */
+  memptr = (VOID *) calloc(1, (unsigned int) size);
   if (memptr == (VOID *) NULL) {
     printf("Error:  Out of memory.\n");
     triexit(1);

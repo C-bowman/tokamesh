@@ -4,7 +4,7 @@ from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
 from warnings import warn
 
 from tokamesh.geometry import build_edge_map
-from tokamesh.triangle import run_triangle
+from tokamesh.triangle import triangulate
 
 
 def equilateral_mesh(
@@ -611,8 +611,7 @@ def mesh_generator(
     inner = (central_R[central_boundary], central_z[central_boundary])
     voids = [[inner[0].mean()], [inner[1].mean()]]
 
-    # run triangle using the python wrapper
-    edge_R, edge_z, edge_triangles = run_triangle(
+    edges, edge_triangles = triangulate(
         outer_boundary=outer,
         inner_boundary=inner,
         void_markers=voids,
@@ -620,8 +619,8 @@ def mesh_generator(
     )
 
     # combine the central and edge meshes
-    R = concatenate([central_R, edge_R])
-    z = concatenate([central_z, edge_z])
+    R = concatenate([central_R, edges[:, 0]])
+    z = concatenate([central_z, edges[:, 1]])
     triangles = concatenate(
         [central_triangles, edge_triangles + central_R.size], axis=0
     )
