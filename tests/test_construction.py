@@ -1,17 +1,69 @@
-from numpy import array
-from tokamesh.construction import remove_duplicate_vertices, Polygon
+import numpy as np
+from tokamesh.construction import (
+    equilateral_mesh,
+    remove_duplicate_vertices,
+    Polygon,
+    rotate,
+    find_boundaries,
+    trim_vertices,
+    build_central_mesh,
+    refine_mesh,
+)
 import pytest
+
+
+def test_equilateral_mesh():
+    x_min = 0
+    x_max = 1
+    y_min = 2
+    y_max = 4
+    resolution = 0.1
+    x, y, triangles = equilateral_mesh((x_min, x_max), (y_min, y_max), resolution)
+
+    assert np.all(x >= x_min)
+    assert np.all(x <= x_max)
+    assert np.all(y >= y_min)
+    assert np.all(y <= y_max)
+
+    expected_num_points = (1 + ((x_max - x_min) // (resolution))) * (
+        1 + ((y_max - y_min) // (resolution * np.sqrt(3) / 2))
+    )
+    assert len(x) == expected_num_points
+
+
+def test_equilateral_mesh_rotated():
+    x_min = 0
+    x_max = 1
+    y_min = 2
+    y_max = 4
+    resolution = 0.1
+    x, y, triangles = equilateral_mesh(
+        (x_min, x_max), (y_min, y_max), resolution, rotation=np.pi / 2
+    )
+
+    # Rotation can involve some floating point nastiness, so loosen
+    # range checking just a little
+    assert np.all(x >= np.nextafter(-y_max, -np.inf))
+    assert np.all(x <= np.nextafter(-y_min, np.inf))
+    assert np.all(y >= np.nextafter(x_min, -np.inf))
+    assert np.all(y <= np.nextafter(x_max, np.inf))
+
+    # Rotated pi/2 so x <=> y
+    expected_num_points = (1 + ((y_max - y_min) // (resolution))) * (
+        1 + ((x_max - x_min) // (resolution * np.sqrt(3) / 2))
+    )
+    assert len(x) == expected_num_points
 
 
 def test_remove_duplicate_vertices():
     # create a square with two triangles
-    target_R = array([1.0, 1.0, 2.0, 2.0])
-    target_z = array([1.0, 2.0, 2.0, 1.0])
-    target_triangles = array([[0, 1, 3], [1, 2, 3]])
+    target_R = np.array([1.0, 1.0, 2.0, 2.0])
+    target_z = np.array([1.0, 2.0, 2.0, 1.0])
+    target_triangles = np.array([[0, 1, 3], [1, 2, 3]])
     # now add a duplicate vertex and an extra triangle
-    R = array([1.0, 1.0, 2.0, 2.0, 0.999999])
-    z = array([1.0, 2.0, 2.0, 1.0, 2.000001])
-    triangles = array([[0, 1, 3], [4, 2, 3], [1, 2, 3]])
+    R = np.array([1.0, 1.0, 2.0, 2.0, 0.999999])
+    z = np.array([1.0, 2.0, 2.0, 1.0, 2.000001])
+    triangles = np.array([[0, 1, 3], [4, 2, 3], [1, 2, 3]])
     # remove the duplicates
     new_R, new_z, new_triangles = remove_duplicate_vertices(
         R=R, z=z, triangles=triangles
@@ -26,10 +78,10 @@ def test_remove_duplicate_vertices():
     assert (new_triangles == target_triangles).all()
 
 
-def test_polygon():
+def test_polygon_is_inside():
     # create a non-convex polygon
-    x = array([1.0, 1.0, 3.0, 3.0, 2.5])
-    y = array([1.0, 1.5, 2.0, 0.0, 1.25])
+    x = np.array([1.0, 1.0, 3.0, 3.0, 2.5])
+    y = np.array([1.0, 1.5, 2.0, 0.0, 1.25])
     P = Polygon(x=x, y=y)
 
     # first check points which should be inside
@@ -43,3 +95,248 @@ def test_polygon():
     assert P.is_inside([0.0, 1.0]) is False
     assert P.is_inside([3.0, 3.0]) is False
     assert P.is_inside([2.0, 2.0]) is False
+
+
+def test_polygon_distance():
+    x = np.array([0.0, 1.0, 1.0, 0.0])
+    y = np.array([0.0, 0.0, 1.0, 1.0])
+    square = Polygon(x=x, y=y)
+
+    assert np.isclose(square.distance((2.0, 0.5)), 1.0)
+    assert np.isclose(square.distance((0.5, 2.0)), 1.0)
+    assert np.isclose(square.distance((-1.0, 0.5)), 1.0)
+    assert np.isclose(square.distance((0.5, -1.0)), 1.0)
+    assert np.isclose(square.distance((0.5, 0.5)), 0.5)
+    assert np.isclose(square.distance((2.0, 2.0)), np.sqrt(2.0))
+
+    height = np.sqrt(3.0) / 2.0
+    triangle = Polygon([0.0, 1.0, 0.5], [0.0, 0.0, height])
+
+    assert np.isclose(triangle.distance([1.5, height]), height)
+    assert np.isclose(triangle.distance([-0.5, height]), height)
+    assert np.isclose(triangle.distance([0.5, -height]), height)
+
+
+@pytest.mark.parametrize(
+    "R, z, angle, pivot, expected",
+    [
+        (1, 0, np.pi, (0, 0), (-1, 0)),
+        (0, 1, np.pi, (0, 0), (0, -1)),
+        (1, 0, np.pi / 2, (0, 0), (0, 1)),
+        (0, 1, np.pi / 2, (0, 0), (-1, 0)),
+        (1, 0, 2 * np.pi, (0, 0), (1, 0)),
+        (1, 1, np.pi, (2, 2), (3, 3)),
+    ],
+)
+def test_rotate(R, z, angle, pivot, expected):
+    answer = rotate(R, z, angle, pivot)
+    assert np.allclose(answer, expected)
+
+
+def assert_lists_are_equal(result, expected):
+    assert len(result) == len(expected)
+    for r, e in zip(result, expected):
+        assert np.array_equal(r, e)
+
+
+def test_find_boundary_one_triangle():
+    triangles = np.array(((1, 2, 3),))
+    boundaries = find_boundaries(triangles)
+    expected = [np.array((1, 2, 3, 3))]
+
+    assert_lists_are_equal(boundaries, expected)
+
+
+def test_find_boundary_two_disconnected_triangle():
+    triangles = np.array(((1, 2, 3), (4, 5, 6)))
+    boundaries = find_boundaries(triangles)
+    expected = [np.array((1, 2, 3, 3)), np.array((4, 5, 6, 6))]
+
+    assert_lists_are_equal(boundaries, expected)
+
+
+def test_find_boundary_multiple_triangles():
+    triangles = np.array(
+        [
+            [0, 1, 2],
+            [1, 2, 3],
+            [2, 3, 5],
+            [3, 4, 5],
+            [4, 5, 6],
+            [0, 2, 7],
+            [2, 5, 8],
+            [2, 7, 8],
+            [5, 6, 9],
+            [5, 8, 9],
+            [7, 8, 10],
+            [8, 9, 11],
+            [8, 10, 11],
+        ]
+    )
+
+    boundaries = find_boundaries(triangles)
+    expected = [np.array((0, 1, 3, 4, 6, 9, 11, 10, 7, 7))]
+
+    assert_lists_are_equal(boundaries, expected)
+
+
+def test_find_boundary_multiple_triangles_inner_boundary():
+    # Same as above but missing (3, 6, 9)
+    triangles = np.array(
+        [
+            [0, 1, 2],
+            [1, 2, 3],
+            [2, 3, 5],
+            [3, 4, 5],
+            [4, 5, 6],
+            [0, 2, 7],
+            [2, 7, 8],
+            [5, 6, 9],
+            [5, 8, 9],
+            [7, 8, 10],
+            [8, 9, 11],
+            [8, 10, 11],
+        ]
+    )
+
+    boundaries = find_boundaries(triangles)
+    expected = [np.array((0, 1, 3, 4, 6, 9, 11, 10, 7, 7)), np.array((5, 2, 8, 8))]
+
+    assert_lists_are_equal(boundaries, expected)
+
+
+def test_trim_vertices_one_triangle():
+    R = np.array((0, 1, 0))
+    z = np.array((0, 0, 1))
+    triangles = np.array(((0, 1, 2),))
+
+    trimmed_R, trimmed_z, trimmed_triangles = trim_vertices(
+        R, z, triangles, np.array([False, True, False])
+    )
+
+    assert np.array_equal(trimmed_R, np.array((0, 0)))
+    assert np.array_equal(trimmed_z, np.array((0, 1)))
+    assert np.array_equal(trimmed_triangles, np.empty((0, 3)))
+
+
+def test_trim_vertices_multiple_triangles():
+    R = np.array((0.0, 0.5, 1.0, 1.5, 2.5, 2.0, 3.0, 0.5, 1.5, 2.5, 1.0, 2.0))
+    z = np.array((2.0, 3.0, 2.0, 3.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 0.0, 0.0))
+
+    triangles = np.array(
+        [
+            [0, 1, 2],
+            [1, 2, 3],
+            [2, 3, 5],
+            [3, 4, 5],
+            [4, 5, 6],
+            [0, 2, 7],
+            [2, 5, 8],
+            [2, 7, 8],
+            [5, 6, 9],
+            [5, 8, 9],
+            [7, 8, 10],
+            [8, 9, 11],
+            [8, 10, 11],
+        ]
+    )
+
+    trim_bools = np.array(
+        [True, True, False, True, True, False, True, True, False, True, True, True]
+    )
+
+    trimmed_R, trimmed_z, trimmed_triangles = trim_vertices(R, z, triangles, trim_bools)
+
+    expected_R = np.array((1.0, 2.0, 1.5))
+    expected_z = np.array((2.0, 2.0, 1.0))
+    expected_triangles = np.array(((0, 1, 2),))
+
+    assert np.array_equal(trimmed_R, expected_R)
+    assert np.array_equal(trimmed_z, expected_z)
+    assert np.array_equal(trimmed_triangles, expected_triangles)
+
+
+def test_build_central_mesh():
+    x_min = 0.0
+    x_max = 1.0
+    y_min = 2.0
+    y_max = 4.0
+
+    R = np.array([x_min, x_max, x_min, x_max])
+    z = np.array([y_min, y_min, y_max, y_max])
+    resolution = 0.1
+    x, y, triangles = build_central_mesh(R, z, resolution)
+
+    assert np.all(x >= x_min + resolution)
+    assert np.all(x <= x_max - resolution)
+    assert np.all(y >= y_min + resolution)
+    assert np.all(y <= y_max - resolution)
+
+    expected_num_points = (1 + ((x_max - x_min) // (resolution))) * (
+        1 + ((y_max - y_min) // (resolution * np.sqrt(3) / 2))
+    )
+    assert len(x) < expected_num_points
+
+
+def test_build_central_mesh_rotated():
+    x_min = 0.0
+    x_max = 1.0
+    y_min = 2.0
+    y_max = 4.0
+
+    R = np.array([x_min, x_max, x_min, x_max])
+    z = np.array([y_min, y_min, y_max, y_max])
+    resolution = 0.1
+    x, y, triangles = build_central_mesh(R, z, resolution, rotation=np.pi / 4)
+
+    assert np.all(x >= x_min + resolution)
+    assert np.all(x <= x_max - resolution)
+    assert np.all(y >= y_min + resolution)
+    assert np.all(y <= y_max - resolution)
+
+    expected_num_points = (1 + ((x_max - x_min) // (resolution))) * (
+        1 + ((y_max - y_min) // (resolution * np.sqrt(3) / 2))
+    )
+    assert len(x) < expected_num_points
+
+
+def test_refine_mesh():
+    height = np.sqrt(3.0) / 2.0
+    R0 = np.array([0.0, 1.0, 0.5])
+    Z0 = np.array([0.0, 0.0, height])
+    triangles0 = np.array(([0, 1, 2],))
+
+    R1, Z1, triangles1 = refine_mesh(R0, Z0, triangles0, np.array([True]))
+
+    expected_R1 = np.array([0.0, 0.5, 0.25, 1.0, 0.75, 0.5])
+    expected_Z1 = np.array([0.0, 0.0, height / 2, 0.0, height / 2, height])
+    expected_triangles1 = np.array([[0, 1, 2], [3, 1, 4], [5, 4, 2], [1, 4, 2]])
+
+    assert np.allclose(R1, expected_R1)
+    assert np.allclose(Z1, expected_Z1)
+    assert np.allclose(triangles1, expected_triangles1)
+
+    # Do a second level of refinement
+    refines1 = np.zeros(triangles1.shape, dtype=bool)
+    refines1[0] = True
+    R2, Z2, triangles2 = refine_mesh(R1, Z1, triangles1, refines1)
+
+    expected_R2 = np.array([0.0, 0.25, 0.125, 0.5, 0.375, 0.25, 1.0, 0.75, 0.5])
+    expected_Z2 = np.array(
+        [0.0, 0.0, 0.21650635, 0.0, 0.21650635, 0.4330127, 0.0, 0.4330127, 0.8660254]
+    )
+    expected_triangles2 = np.array(
+        [
+            [0, 1, 2],
+            [3, 1, 4],
+            [5, 4, 2],
+            [1, 4, 2],
+            [6, 3, 7],
+            [8, 7, 5],
+            [4, 7, 3],
+            [4, 7, 5],
+        ]
+    )
+    assert np.allclose(R2, expected_R2)
+    assert np.allclose(Z2, expected_Z2)
+    assert np.allclose(triangles2, expected_triangles2)
