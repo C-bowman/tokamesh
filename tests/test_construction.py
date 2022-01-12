@@ -8,6 +8,7 @@ from tokamesh.construction import (
     trim_vertices,
     build_central_mesh,
     refine_mesh,
+    mesh_generator,
 )
 import pytest
 
@@ -340,3 +341,19 @@ def test_refine_mesh():
     assert np.allclose(R2, expected_R2)
     assert np.allclose(Z2, expected_Z2)
     assert np.allclose(triangles2, expected_triangles2)
+
+
+def test_mesh_generator():
+    height = np.sqrt(3.0) / 2.0
+    triangle = Polygon([0.0, 1.0, 0.5], [0.0, 0.0, height])
+
+    x, y, t = mesh_generator(triangle.x, triangle.y, resolution=0.1)
+
+    # Check for duplicate points
+    points = np.column_stack((x, y))
+    unique_points = np.unique(points, axis=0)
+    assert len(points) == len(unique_points)
+
+    # Check for duplicate triangles
+    unique_triangles = np.unique(t, axis=0)
+    assert len(t) == len(unique_triangles)
