@@ -343,6 +343,73 @@ def test_refine_mesh():
     assert np.allclose(triangles2, expected_triangles2)
 
 
+def test_refine_mesh_one_neighbour():
+    height = np.sqrt(3.0) / 2.0
+    R0 = np.array([0.0, 1.0, 0.5, 1.5, 2.0])
+    Z0 = np.array([0.0, 0.0, height, height, 0.0])
+    t0 = np.array(([0, 1, 2], [1, 2, 3], [1, 3, 4]))
+
+    # Refine requiring neighbour to be bisected
+    R1, Z1, t1 = refine_mesh(R0, Z0, t0, np.array([True, False, False]))
+
+    expected_R1 = np.array([0.0, 0.5, 0.25, 1.0, 0.75, 0.5, 1.5, 2.0])
+
+    expected_Z1 = np.array([0.0, 0.0, height / 2, 0.0, height / 2, height, height, 0.0])
+
+    expected_t1 = np.array(
+        [[0, 1, 2], [3, 1, 4], [5, 4, 2], [1, 4, 2], [4, 6, 3], [4, 6, 5], [3, 6, 7]]
+    )
+
+    assert np.allclose(R1, expected_R1)
+    assert np.allclose(Z1, expected_Z1)
+    assert np.allclose(t1, expected_t1)
+
+
+def test_refine_mesh_two_neighbours():
+    height = np.sqrt(3.0) / 2.0
+    R0 = np.array([0.0, 1.0, 0.5, 1.5, 2.0])
+    Z0 = np.array([0.0, 0.0, height, height, 0.0])
+    t0 = np.array(([0, 1, 2], [1, 2, 3], [1, 3, 4]))
+
+    # Refine requiring neighbour to be trisected
+    R1, Z1, t1 = refine_mesh(R0, Z0, t0, np.array([True, False, True]))
+
+    expected_R1 = np.array([0.0, 0.5, 0.25, 1.0, 0.75, 0.5, 1.25, 1.5, 1.5, 1.75, 2.0])
+    expected_Z1 = np.array(
+        [
+            0.0,
+            0.0,
+            height / 2,
+            0.0,
+            height / 2,
+            height,
+            height / 2,
+            height,
+            0.0,
+            height / 2,
+            0.0,
+        ]
+    )
+    expected_t1 = np.array(
+        [
+            [0, 1, 2],
+            [3, 1, 4],
+            [5, 4, 2],
+            [1, 4, 2],
+            [4, 6, 3],
+            [4, 5, 7],
+            [4, 6, 7],
+            [3, 6, 8],
+            [7, 6, 9],
+            [10, 9, 8],
+            [6, 9, 8],
+        ]
+    )
+    assert np.allclose(R1, expected_R1)
+    assert np.allclose(Z1, expected_Z1)
+    assert np.allclose(t1, expected_t1)
+
+
 def test_mesh_generator():
     height = np.sqrt(3.0) / 2.0
     triangle = Polygon([0.0, 1.0, 0.5], [0.0, 0.0, height])
