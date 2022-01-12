@@ -1,4 +1,4 @@
-from numpy import linspace, array, zeros, sqrt, sinc
+from numpy import linspace, array, zeros, sqrt, sinc, array_equal
 from scipy.sparse import csc_matrix
 from numpy.random import multivariate_normal
 from scipy.integrate import quad, simps
@@ -6,7 +6,7 @@ from scipy.integrate import quad, simps
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
 from tokamesh.geometry import Camera, BarycentricGeometryMatrix
-from tokamesh.geometry import radius_hyperbolic_integral
+from tokamesh.geometry import radius_hyperbolic_integral, build_edge_map
 
 
 def test_BarycentricGeometryMatrix():
@@ -81,3 +81,20 @@ def test_radius_hyperbolic_integral():
     exact = radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sq, sqrt_q2)
     # confirm that they agree
     assert abs(exact - numeric) < 2 * abs(err)
+
+
+def test_build_edge_map():
+
+    triangles = array(((0, 1, 2), (3, 1, 2), (4, 3, 2)))
+
+    triangle_edges, edge_vertices, edge_map = build_edge_map(triangles)
+
+    expected_triangle_edges = array(((0, 1, 2), (3, 1, 4), (5, 4, 6)))
+    expected_edge_vertices = array(
+        ((0, 1), (1, 2), (0, 2), (1, 3), (2, 3), (3, 4), (2, 4))
+    )
+    expected_edge_map = {0: [0], 1: [0, 1], 2: [0], 3: [1], 4: [1, 2], 5: [2], 6: [2]}
+
+    assert array_equal(triangle_edges, expected_triangle_edges)
+    assert array_equal(edge_vertices, expected_edge_vertices)
+    assert edge_map == expected_edge_map

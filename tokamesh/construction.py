@@ -76,6 +76,7 @@ def equilateral_mesh(
 
 
 def rotate(R, z, angle, pivot):
+    """Rotate the point `(R, z)` anti-clockwise by `angle` about the point `pivot`"""
     d = sqrt((R - pivot[0]) ** 2 + (z - pivot[1]) ** 2)
     theta = arctan2(z - pivot[1], R - pivot[0]) + angle
     return d * cos(theta) + pivot[0], d * sin(theta) + pivot[1]

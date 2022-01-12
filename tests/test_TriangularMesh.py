@@ -1,8 +1,22 @@
 import pytest
 from numpy import arange, array, sin, cos, pi, isclose, ones
 from numpy.random import uniform, seed
-from tokamesh import TriangularMesh
+from tokamesh import TriangularMesh, BinaryTree
 from tokamesh.construction import equilateral_mesh
+from hypothesis import given, strategies as st
+
+
+@given(st.floats(-4, 8))
+def test_binary_tree(value):
+    limit_left, limit_right = [-4, 8]
+
+    tree = BinaryTree(4, [limit_left, limit_right])
+    index = tree.lookup_index(value)
+
+    left = tree.edges[index]
+    right = tree.edges[index + 1]
+
+    assert left <= value <= right
 
 
 @pytest.fixture
