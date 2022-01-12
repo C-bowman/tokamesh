@@ -116,4 +116,3 @@ def test_find_triangle(mesh):
 def test_find_triangle_inconsistent_shapes(mesh):
     with pytest.raises(ValueError):
         mesh.find_triangle(ones([2, 1]), ones([2, 3]))
-

@@ -33,7 +33,9 @@ def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
         if new_array.shape == (2,):
             new_array = new_array.reshape((1, 2))
         if len(new_array.shape) != 2:
-            raise ValueError(f"Wrong shape for input {array_name}: expected (N, 2), got {new_array.shape}")
+            raise ValueError(
+                f"Wrong shape for input {array_name}: expected (N, 2), got {new_array.shape}"
+            )
         return new_array
 
     R_edges = check_input_array(R_edges, "R_edges")
