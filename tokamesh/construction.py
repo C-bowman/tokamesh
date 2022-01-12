@@ -330,8 +330,8 @@ def build_central_mesh(
 
     :param padding_factor: \
         A multiplicative factor which defines the minimum distance to the boundary
-        such that ``min_distance = padding_factor*scale``. No vertices in the returned
-        mesh will be closer to the boundary than ``min_distance``.
+        such that ``min_distance = padding_factor * resolution``. No vertices in the
+        returned mesh will be closer to the boundary than ``min_distance``.
 
     :param rotation: \
         Angle (in radians) by which the orientations of mesh triangles are rotated,
@@ -345,7 +345,7 @@ def build_central_mesh(
         in the mesh, where ``N`` is the total number of triangles.
     """
     poly = Polygon(R_boundary, z_boundary)
-    pad = 2 * 0.5 * sqrt(3)
+    pad = 2 * 0.5 * sqrt(3) * resolution
     if rotation is None:
         R_range = (R_boundary.min() - pad, R_boundary.max() + pad)
         z_range = (z_boundary.min() - pad, z_boundary.max() + pad)
