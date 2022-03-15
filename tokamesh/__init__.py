@@ -12,8 +12,9 @@ except PackageNotFoundError:
 
 __all__ = ["__version__"]
 
-from numpy import searchsorted, stack, log2, floor, unique, atleast_1d
-from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray, savez, load
+from numpy import searchsorted, stack, log2, floor, unique, atleast_1d, atleast_2d
+from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray
+from numpy import savez, load, array
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
 from tokamesh.geometry import build_edge_map
@@ -378,6 +379,27 @@ class TriangularMesh(object):
              referring to the mesh's vertex index. The element (value) is the Barycentric
              coordinate for that point according to that mesh vertex.
         """
+        points = atleast_2d(points)
+        if len(points.shape) > 2:
+            raise ValueError(
+                f"""\n
+                [ TriangularMesh error ]
+                >> The expected format of the points variable is an array of r-z pairs.
+                >> A two-dimensional array was expected but a the array provided has
+                >> shape {points.shape}. 
+                """
+            )
+
+        if points.shape[1] != 2:
+            raise ValueError(
+                f"""\n
+                [ TriangularMesh error ]
+                >> The expected format of the points variable is an array of r-z pairs.
+                >> The second dimension was expected to have size two but the array
+                >> provided has shape {points.shape}. 
+                """
+            )
+
         G = zeros([len(points), self.n_vertices])
         for q, p in enumerate(points):
             unique_coords, slices, _ = self.grid_lookup(p[0], p[1])

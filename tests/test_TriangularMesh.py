@@ -82,6 +82,30 @@ def test_interpolate(mesh):
     assert isclose(interpolated, plane(0.31, 0.54)).all()
 
 
+def test_build_interpolator_matrix(mesh):
+    # As barycentric interpolation is linear, if we use a plane as the test
+    # function, it should agree nearly exactly with interpolation result.
+    def plane(x, y):
+        return 0.21 - 4.91 * x + 21.9 * y
+
+    vertex_values = plane(mesh.R, mesh.z)
+    # create a series of random test-points
+    R_test = uniform(0.2, 0.8, size=50)
+    z_test = uniform(0.2, 0.8, size=50)
+    points = array([R_test, z_test]).T
+    G = mesh.build_interpolator_matrix(points)
+    interpolated = G.dot(vertex_values)
+    # check the exact and interpolated values are equal
+    assert isclose(interpolated, plane(R_test, z_test)).all()
+
+    # now test giving just floats
+    r = 0.61
+    z = 0.74
+    G = mesh.build_interpolator_matrix((r, z))
+    interpolated = G.dot(vertex_values)
+    assert isclose(interpolated, plane(r, z)).all()
+
+
 def test_interpolate_inconsistent_shapes(mesh):
     with pytest.raises(ValueError):
         mesh.interpolate(ones([2, 1]), ones([2, 3]), ones(mesh.n_vertices))
