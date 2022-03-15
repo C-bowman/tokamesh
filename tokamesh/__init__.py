@@ -13,7 +13,7 @@ except PackageNotFoundError:
 __all__ = ["__version__"]
 
 from numpy import searchsorted, stack, log2, floor, unique, atleast_1d
-from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray
+from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray, savez
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
 from tokamesh.geometry import build_edge_map
@@ -368,6 +368,9 @@ class TriangularMesh(object):
         )
         image.resize((shape[1], shape[0]))
         return R_axis, z_axis, image.T
+
+    def save(self, filepath):
+        savez(filepath, R=self.R, z=self.z, triangles=self.triangle_vertices)
 
 
 class BinaryTree:
