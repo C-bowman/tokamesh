@@ -369,6 +369,36 @@ class TriangularMesh(object):
         image.resize((shape[1], shape[0]))
         return R_axis, z_axis, image.T
 
+    def build_interpolator_matrix(self, points):
+        """
+        Takes an array of (R, z) points and generates an interpolator matrix
+        For each point, finds the triangle that encases the point and returns the Barycentric
+             coordinates.
+        The final matrix is 2d with each row referring to a requested point and each column
+             referring to the mesh's vertex index. The element (value) is the Barycentric
+             coordinate for that point according to that mesh vertex.
+        """
+        G = zeros([len(points), self.n_vertices])
+        for q, p in enumerate(points):
+            unique_coords, slices, _ = self.grid_lookup(p[0], p[1])
+            for v, slc in zip(unique_coords, slices):
+                # only need to proceed if the current coordinate contains triangles
+                key = (v[0], v[1])
+                if key in self.tree_map:
+                    # get triangles intersecting this cell
+                    search_triangles = self.tree_map[key]
+                    # get the barycentric coord values of each point, and the
+                    # index of the triangle which contains them
+                    coords, container_triangles = self.bary_coords(
+                        p[0], p[1], search_triangles
+                    )
+                    inds = self.triangle_vertices[container_triangles, :]
+                    inds = inds.flatten()
+                    coords = coords.flatten()
+                    for i,v in zip(inds, coords):
+                        G[q, i] = v
+        return G
+
     def save(self, filepath):
         savez(filepath, R=self.R, z=self.z, triangles=self.triangle_vertices)
 
