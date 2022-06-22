@@ -46,7 +46,7 @@ class BarycentricGeometryMatrix(object):
 
         # calculate the ray data
         diffs = ray_ends - ray_origins
-        self.lengths = sqrt((diffs ** 2).sum(axis=1))
+        self.lengths = sqrt((diffs**2).sum(axis=1))
         self.rays = diffs / self.lengths[:, None]
         self.pixels = ray_origins
         self.n_rays = self.lengths.size
@@ -203,12 +203,12 @@ class BarycentricGeometryMatrix(object):
         beta = self.rays[:, 2] * u_ratio
 
         # calculate the quadratic coefficients
-        a = self.q2 - beta ** 2
+        a = self.q2 - beta**2
         b = self.q1 - 2 * alpha * beta
-        c = self.q0 - alpha ** 2
+        c = self.q0 - alpha**2
 
         # use the descriminant to check for the existence of the roots
-        D = b ** 2 - 4 * a * c
+        D = b**2 - 4 * a * c
         i = (D >= 0).nonzero()
 
         # where roots exists, calculate them
@@ -324,7 +324,7 @@ class BarycentricGeometryMatrix(object):
         )
 
         z_coeff = self.pixels[inds, 2] * dl + 0.5 * self.rays[inds, 2] * (
-            l2_slice ** 2 - l1_slice ** 2
+            l2_slice**2 - l1_slice**2
         )
         lam1_int = (
             self.lam1_coeffs[tri, 0] * R_coeff
@@ -390,8 +390,8 @@ class BarycentricGeometryMatrix(object):
 def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
     u1 = sqrt_q2 * (l1 - l_tan)
     u2 = sqrt_q2 * (l2 - l_tan)
-    R1 = sqrt(u1 ** 2 + R_tan_sqr)
-    R2 = sqrt(u2 ** 2 + R_tan_sqr)
+    R1 = sqrt(u1**2 + R_tan_sqr)
+    R2 = sqrt(u2**2 + R_tan_sqr)
 
     ratio = (u2 + R2) / (u1 + R1)
     return 0.5 * (u2 * R2 - u1 * R1 + log(ratio) * R_tan_sqr) / sqrt_q2
@@ -475,7 +475,7 @@ class Camera(object):
 
         # find the first perpendicular
         K = self.du[1] / self.du[0]
-        b = 1.0 / sqrt(K ** 2 + 1.0)
+        b = 1.0 / sqrt(K**2 + 1.0)
         a = -K * b
         self.p1 = array([a, b, 0.0])
 
@@ -488,7 +488,7 @@ class Camera(object):
         # calculate the ray directions
         tan_x = tan(self.x_angles)
         tan_y = tan(self.y_angles)
-        norm = sqrt(1 + (tan_x ** 2)[:, None] + (tan_y ** 2)[None, :])
+        norm = sqrt(1 + (tan_x**2)[:, None] + (tan_y**2)[None, :])
         v = (
             self.du[None, None, :]
             + tan_x[:, None, None] * self.p1[None, None, :]

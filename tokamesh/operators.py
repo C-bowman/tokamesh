@@ -37,7 +37,7 @@ def edge_difference_matrix(R, z, triangles, normalised=False, sparse_format="csr
     if normalised:
         dR = diff(R[edge_vertices], axis=1)
         dz = diff(z[edge_vertices], axis=1)
-        inv_distances = 1.0 / sqrt(dR ** 2 + dz ** 2)
+        inv_distances = 1.0 / sqrt(dR**2 + dz**2)
         entry_vals[0::2] = inv_distances
         entry_vals[1::2] = -inv_distances
     else:

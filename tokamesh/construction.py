@@ -157,7 +157,7 @@ class Polygon(object):
         self.y_lwr = minimum(self.y[1:], self.y[:-1])
 
         # normalise the unit vectors
-        self.lengths = sqrt(self.dx ** 2 + self.dy ** 2)
+        self.lengths = sqrt(self.dx**2 + self.dy**2)
         self.dx /= self.lengths
         self.dy /= self.lengths
 
@@ -181,7 +181,7 @@ class Polygon(object):
         D = dx * self.dy - dy * self.dx
         booles = (0 <= L) & (L <= 1)
 
-        points_min = sqrt(dx ** 2 + dy ** 2).min()
+        points_min = sqrt(dx**2 + dy**2).min()
 
         if booles.any():
             perp_min = abs(D[booles]).min()
@@ -605,7 +605,7 @@ def mesh_generator(
     # prepare triangle inputs:
     if edge_resolution is None:
         edge_resolution = resolution
-    eq_area = (edge_resolution ** 2) * 0.25 * sqrt(3)
+    eq_area = (edge_resolution**2) * 0.25 * sqrt(3)
     area_multiplier = edge_max_area
 
     outer = (R_boundary, z_boundary)

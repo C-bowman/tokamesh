@@ -417,7 +417,7 @@ class TriangularMesh(object):
                     inds = self.triangle_vertices[container_triangles, :]
                     inds = inds.flatten()
                     coords = coords.flatten()
-                    for i,v in zip(inds, coords):
+                    for i, v in zip(inds, coords):
                         G[q, i] = v
         return G
 
@@ -427,7 +427,7 @@ class TriangularMesh(object):
     @classmethod
     def load(cls, filepath):
         D = load(filepath)
-        return cls(R=D['R'], z=D['z'], triangles=D['triangles'])
+        return cls(R=D["R"], z=D["z"], triangles=D["triangles"])
 
 
 class BinaryTree:
@@ -442,7 +442,7 @@ class BinaryTree:
 
     def __init__(self, layers, limits):
         self.layers = layers
-        self.nodes = 2 ** self.layers
+        self.nodes = 2**self.layers
         self.lims = limits
         self.edges = linspace(limits[0], limits[1], self.nodes + 1)
         self.mids = 0.5 * (self.edges[1:] + self.edges[:-1])
