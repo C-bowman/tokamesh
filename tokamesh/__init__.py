@@ -423,10 +423,25 @@ class TriangularMesh(object):
         return interpolator_matrix
 
     def save(self, filepath):
+        """
+        Save the mesh using the numpy 'npz' format.
+
+        :param str filepath:
+            File path to which the mesh will be saved.
+        """
         savez(filepath, R=self.R, z=self.z, triangles=self.triangle_vertices)
 
     @classmethod
     def load(cls, filepath):
+        """
+        Load and return a previously saved instance of ``TriangularMesh``.
+
+        :param str filepath:
+            File path of the saved mesh.
+
+        :return:
+            The loaded mesh as an instance of ``TriangularMesh``.
+        """
         D = load(filepath)
         return cls(R=D["R"], z=D["z"], triangles=D["triangles"])
 

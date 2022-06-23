@@ -1,23 +1,13 @@
 import numpy as np
-from tokamesh.construction import (
-    equilateral_mesh,
-    remove_duplicate_vertices,
-    Polygon,
-    rotate,
-    find_boundaries,
-    trim_vertices,
-    build_central_mesh,
-    refine_mesh,
-    mesh_generator,
-)
+from tokamesh.construction import equilateral_mesh, build_central_mesh, mesh_generator
+from tokamesh.construction import find_boundaries, refine_mesh, rotate, trim_vertices
+from tokamesh.construction import remove_duplicate_vertices, Polygon
 import pytest
 
 
 def test_equilateral_mesh():
-    x_min = 0
-    x_max = 1
-    y_min = 2
-    y_max = 4
+    x_min, x_max = 0, 1
+    y_min, y_max = 2, 4
     resolution = 0.1
     x, y, triangles = equilateral_mesh((x_min, x_max), (y_min, y_max), resolution)
 
@@ -44,8 +34,8 @@ def test_equilateral_mesh_rotated():
     )
 
     # Rotated pi/2 so x <=> y
-    assert np.isclose(y, -x_rot).all()
-    assert np.isclose(x, y_rot).all()
+    assert np.allclose(y, -x_rot)
+    assert np.allclose(x, y_rot)
 
     expected_num_points = (1 + ((y_max - y_min) // (resolution))) * (
         1 + ((x_max - x_min) // (resolution * np.sqrt(3) / 2))
