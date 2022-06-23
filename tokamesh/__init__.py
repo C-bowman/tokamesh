@@ -12,9 +12,9 @@ except PackageNotFoundError:
 
 __all__ = ["__version__"]
 
-from numpy import searchsorted, stack, log2, floor, unique, atleast_1d, atleast_2d
-from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray
-from numpy import savez, load, array
+from numpy import searchsorted, stack, log2, floor, unique, atleast_1d
+from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray, tile
+from numpy import savez, load
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
 from tokamesh.geometry import build_edge_map
@@ -409,12 +409,13 @@ class TriangularMesh(object):
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
                 # index of the triangle which contains them
-                coords, _ = self.bary_coords(
+                coords, container_triangles = self.bary_coords(
                     R_vals[cell_indices], z_vals[cell_indices], search_triangles
                 )
-                # take the dot-product of the coordinates and the vertex
-                # values to get the interpolated value
-                interpolator_matrix[cell_indices, :] = coords
+                # get corresponding cell indices for the vertex indices
+                vertex_inds = self.triangle_vertices[container_triangles, :]
+                # insert the coordinate values into the matrix
+                interpolator_matrix[cell_indices[:, None], vertex_inds] = coords
         return interpolator_matrix
 
     def save(self, filepath):

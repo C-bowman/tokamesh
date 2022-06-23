@@ -70,7 +70,7 @@ def test_interpolate(mesh):
     interpolated = mesh.interpolate(R_test, z_test, vertex_values)
     assert isclose(interpolated, plane(R_test, z_test)).all()
 
-    # now test multi-dimensional inputs
+    # now test multidimensional inputs
     R_test = uniform(0.2, 0.8, size=[12, 3, 8])
     z_test = uniform(0.2, 0.8, size=[12, 3, 8])
     # check the exact and interpolated values are equal
@@ -90,8 +90,8 @@ def test_build_interpolator_matrix(mesh):
 
     vertex_values = plane(mesh.R, mesh.z)
     # create a series of random test-points
-    R_test = uniform(0.2, 0.8, size=50)
-    z_test = uniform(0.2, 0.8, size=50)
+    R_test = uniform(0.2, 0.8, size=5000)
+    z_test = uniform(0.2, 0.8, size=5000)
     G = mesh.build_interpolator_matrix(R_test, z_test)
     interpolated = G.dot(vertex_values)
     # check the exact and interpolated values are equal
