@@ -39,9 +39,7 @@ def test_equilateral_mesh_rotated():
     x_rot, y_rot, _ = equilateral_mesh(
         (x_min, x_max), (y_min, y_max), resolution, rotation=np.pi / 2
     )
-    x, y, _ = equilateral_mesh(
-        (x_min, x_max), (y_min, y_max), resolution, rotation=0.
-    )
+    x, y, _ = equilateral_mesh((x_min, x_max), (y_min, y_max), resolution, rotation=0.0)
 
     # Rotated pi/2 so x <=> y
     assert np.isclose(y, -x_rot).all()
