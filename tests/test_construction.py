@@ -33,23 +33,20 @@ def test_equilateral_mesh():
 
 
 def test_equilateral_mesh_rotated():
-    x_min = 0
-    x_max = 1
-    y_min = 2
-    y_max = 4
+    x_min, x_max = 0, 1
+    y_min, y_max = 2, 4
     resolution = 0.1
-    x, y, triangles = equilateral_mesh(
+    x_rot, y_rot, _ = equilateral_mesh(
         (x_min, x_max), (y_min, y_max), resolution, rotation=np.pi / 2
     )
-
-    # Rotation can involve some floating point nastiness, so loosen
-    # range checking just a little
-    assert np.all(x >= np.nextafter(-y_max, -np.inf))
-    assert np.all(x <= np.nextafter(-y_min, np.inf))
-    assert np.all(y >= np.nextafter(x_min, -np.inf))
-    assert np.all(y <= np.nextafter(x_max, np.inf))
+    x, y, _ = equilateral_mesh(
+        (x_min, x_max), (y_min, y_max), resolution, rotation=0.
+    )
 
     # Rotated pi/2 so x <=> y
+    assert np.isclose(y, -x_rot).all()
+    assert np.isclose(x, y_rot).all()
+
     expected_num_points = (1 + ((y_max - y_min) // (resolution))) * (
         1 + ((x_max - x_min) // (resolution * np.sqrt(3) / 2))
     )
