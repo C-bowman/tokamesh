@@ -370,56 +370,52 @@ class TriangularMesh(object):
         image.resize((shape[1], shape[0]))
         return R_axis, z_axis, image.T
 
-    def build_interpolator_matrix(self, points):
+    def build_interpolator_matrix(self, R, z):
         """
-        Takes an array of (R, z) points and generates an interpolator matrix
-        For each point, finds the triangle that encases the point and returns the Barycentric
-             coordinates.
-        The final matrix is 2d with each row referring to a requested point and each column
-             referring to the mesh's vertex index. The element (value) is the Barycentric
-             coordinate for that point according to that mesh vertex.
+
+        :param R: \
+            The major-radius of each interpolation point as 1D ``numpy.ndarray``.
+
+        :param z: \
+            The z-height of each interpolation point as a 1D ``numpy.ndarray``.
+
+        :return: \
+            ...
         """
-        points = atleast_2d(points)
-        if len(points.shape) > 2:
+        R_vals = atleast_1d(R)
+        z_vals = atleast_1d(z)
+
+        if R_vals.ndim != 1 or z_vals.ndim != 1 or R_vals.size != z_vals.size:
             raise ValueError(
                 f"""\n
                 [ TriangularMesh error ]
-                >> The expected format of the points variable is an array of r-z pairs.
-                >> A two-dimensional array was expected but a the array provided has
-                >> shape {points.shape}. 
+                >> The 'R' and 'z' arguments of build_interpolator_matrix
+                >> must be 1D arrays of equal size, however their shapes are
+                >> {R_vals.shape}, {z_vals.shape}
+                >> respectively.
                 """
             )
 
-        if points.shape[1] != 2:
-            raise ValueError(
-                f"""\n
-                [ TriangularMesh error ]
-                >> The expected format of the points variable is an array of r-z pairs.
-                >> The second dimension was expected to have size two but the array
-                >> provided has shape {points.shape}. 
-                """
-            )
-
-        G = zeros([len(points), self.n_vertices])
-        for q, p in enumerate(points):
-            unique_coords, slices, _ = self.grid_lookup(p[0], p[1])
-            for v, slc in zip(unique_coords, slices):
-                # only need to proceed if the current coordinate contains triangles
-                key = (v[0], v[1])
-                if key in self.tree_map:
-                    # get triangles intersecting this cell
-                    search_triangles = self.tree_map[key]
-                    # get the barycentric coord values of each point, and the
-                    # index of the triangle which contains them
-                    coords, container_triangles = self.bary_coords(
-                        p[0], p[1], search_triangles
-                    )
-                    inds = self.triangle_vertices[container_triangles, :]
-                    inds = inds.flatten()
-                    coords = coords.flatten()
-                    for i, v in zip(inds, coords):
-                        G[q, i] = v
-        return G
+        interpolator_matrix = zeros([R_vals.size, self.n_vertices])
+        # lookup sets of coordinates are in each grid cell
+        unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
+        # loop over each unique grid coordinate
+        for v, slc in zip(unique_coords, slices):
+            # only need to proceed if the current coordinate contains triangles
+            key = (v[0], v[1])
+            if key in self.tree_map:
+                # get triangles intersecting this cell
+                search_triangles = self.tree_map[key]
+                cell_indices = indices[slc]  # the indices of points inside this cell
+                # get the barycentric coord values of each point, and the
+                # index of the triangle which contains them
+                coords, _ = self.bary_coords(
+                    R_vals[cell_indices], z_vals[cell_indices], search_triangles
+                )
+                # take the dot-product of the coordinates and the vertex
+                # values to get the interpolated value
+                interpolator_matrix[cell_indices, :] = coords
+        return interpolator_matrix
 
     def save(self, filepath):
         savez(filepath, R=self.R, z=self.z, triangles=self.triangle_vertices)

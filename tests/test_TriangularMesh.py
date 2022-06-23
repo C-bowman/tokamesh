@@ -92,16 +92,14 @@ def test_build_interpolator_matrix(mesh):
     # create a series of random test-points
     R_test = uniform(0.2, 0.8, size=50)
     z_test = uniform(0.2, 0.8, size=50)
-    points = array([R_test, z_test]).T
-    G = mesh.build_interpolator_matrix(points)
+    G = mesh.build_interpolator_matrix(R_test, z_test)
     interpolated = G.dot(vertex_values)
     # check the exact and interpolated values are equal
     assert isclose(interpolated, plane(R_test, z_test)).all()
 
     # now test giving just floats
-    r = 0.61
-    z = 0.74
-    G = mesh.build_interpolator_matrix((r, z))
+    r, z = 0.61, 0.74
+    G = mesh.build_interpolator_matrix(r, z)
     interpolated = G.dot(vertex_values)
     assert isclose(interpolated, plane(r, z)).all()
 
