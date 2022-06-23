@@ -372,6 +372,9 @@ class TriangularMesh(object):
 
     def build_interpolator_matrix(self, R, z):
         """
+        For a given set of points, construct an 'interpolator' matrix, such
+        that its product with a vector of field values at each mesh vertex
+        yields the interpolated values of the field at the given set of points.
 
         :param R: \
             The major-radius of each interpolation point as 1D ``numpy.ndarray``.
@@ -380,7 +383,8 @@ class TriangularMesh(object):
             The z-height of each interpolation point as a 1D ``numpy.ndarray``.
 
         :return: \
-            ...
+            The interpolator matrix as a 2D ``numpy.ndarray`` with a shape of
+            the number of interpolation points by the number of mesh vertices.
         """
         R_vals = atleast_1d(R)
         z_vals = atleast_1d(z)
