@@ -8,15 +8,18 @@ from hypothesis import given, strategies as st
 
 @given(st.floats(-4, 8))
 def test_binary_tree(value):
-    limit_left, limit_right = [-4, 8]
+    limit_left, limit_right = -4, 8
 
     tree = BinaryTree(4, [limit_left, limit_right])
     index = tree.lookup_index(value)
-
-    left = tree.edges[index]
-    right = tree.edges[index + 1]
-
-    assert left <= value <= right
+    # tree only returns the index if the value is inside the
+    # range, exclusive of the lower limit, else it returns -1
+    if limit_left < value <= limit_right:
+        left = tree.edges[index]
+        right = tree.edges[index + 1]
+        assert left <= value <= right
+    else:
+        assert index == -1
 
 
 @pytest.fixture
