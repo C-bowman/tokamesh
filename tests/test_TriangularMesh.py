@@ -8,15 +8,18 @@ from hypothesis import given, strategies as st
 
 @given(st.floats(-4, 8))
 def test_binary_tree(value):
-    limit_left, limit_right = [-4, 8]
+    limit_left, limit_right = -4, 8
 
     tree = BinaryTree(4, [limit_left, limit_right])
     index = tree.lookup_index(value)
-
-    left = tree.edges[index]
-    right = tree.edges[index + 1]
-
-    assert left <= value <= right
+    # tree only returns the index if the value is inside the
+    # range, exclusive of the lower limit, else it returns -1
+    if limit_left < value <= limit_right:
+        left = tree.edges[index]
+        right = tree.edges[index + 1]
+        assert left <= value <= right
+    else:
+        assert index == -1
 
 
 @pytest.fixture
@@ -70,7 +73,7 @@ def test_interpolate(mesh):
     interpolated = mesh.interpolate(R_test, z_test, vertex_values)
     assert isclose(interpolated, plane(R_test, z_test)).all()
 
-    # now test multi-dimensional inputs
+    # now test multidimensional inputs
     R_test = uniform(0.2, 0.8, size=[12, 3, 8])
     z_test = uniform(0.2, 0.8, size=[12, 3, 8])
     # check the exact and interpolated values are equal
@@ -90,18 +93,16 @@ def test_build_interpolator_matrix(mesh):
 
     vertex_values = plane(mesh.R, mesh.z)
     # create a series of random test-points
-    R_test = uniform(0.2, 0.8, size=50)
-    z_test = uniform(0.2, 0.8, size=50)
-    points = array([R_test, z_test]).T
-    G = mesh.build_interpolator_matrix(points)
+    R_test = uniform(0.2, 0.8, size=5000)
+    z_test = uniform(0.2, 0.8, size=5000)
+    G = mesh.build_interpolator_matrix(R_test, z_test)
     interpolated = G.dot(vertex_values)
     # check the exact and interpolated values are equal
     assert isclose(interpolated, plane(R_test, z_test)).all()
 
     # now test giving just floats
-    r = 0.61
-    z = 0.74
-    G = mesh.build_interpolator_matrix((r, z))
+    r, z = 0.61, 0.74
+    G = mesh.build_interpolator_matrix(r, z)
     interpolated = G.dot(vertex_values)
     assert isclose(interpolated, plane(r, z)).all()
 

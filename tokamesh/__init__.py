@@ -12,9 +12,9 @@ except PackageNotFoundError:
 
 __all__ = ["__version__"]
 
-from numpy import searchsorted, stack, log2, floor, unique, atleast_1d, atleast_2d
+from numpy import searchsorted, stack, log2, floor, unique, atleast_1d
 from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray
-from numpy import savez, load, array
+from numpy import savez, load
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
 from tokamesh.geometry import build_edge_map
@@ -182,7 +182,7 @@ class TriangularMesh(object):
             raise ValueError(
                 f"""\n
                 [ TriangularMesh error ]
-                >> The size of 'vertex_values' argument of the TriangularMesh.interpolate
+                >> The size of the 'vertex_values' argument of TriangularMesh.interpolate
                 >> must be equal to the number of mesh vertices.
                 >> The mesh has {self.n_vertices} vertices but given array is of size {vertex_values.size}.
                 """
@@ -193,10 +193,11 @@ class TriangularMesh(object):
 
         if R_vals.shape != z_vals.shape:
             raise ValueError(
-                """\n
+                f"""\n
                 [ TriangularMesh error ]
-                >> The 'R' and 'z' arrays passed to the TriangularMesh.interpolate
-                >> method are of inconsistent shapes - their shapes must be equal.
+                >> The 'R' and 'z' arguments of TriangularMesh.interpolate
+                >> have inconsistent shapes:
+                >> {R_vals.shape} != {z_vals.shape}
                 """
             )
 
@@ -249,10 +250,11 @@ class TriangularMesh(object):
 
         if R_vals.shape != z_vals.shape:
             raise ValueError(
-                """\n
+                f"""\n
                 [ TriangularMesh error ]
-                >> The 'R' and 'z' arrays passed to the TriangularMesh.interpolate
-                >> method are of inconsistent shapes - their shapes must be equal.
+                >> The 'R' and 'z' arguments of TriangularMesh.find_triangle
+                >> have inconsistent shapes:
+                >> {R_vals.shape} != {z_vals.shape}
                 """
             )
 
@@ -370,62 +372,78 @@ class TriangularMesh(object):
         image.resize((shape[1], shape[0]))
         return R_axis, z_axis, image.T
 
-    def build_interpolator_matrix(self, points):
+    def build_interpolator_matrix(self, R, z):
         """
-        Takes an array of (R, z) points and generates an interpolator matrix
-        For each point, finds the triangle that encases the point and returns the Barycentric
-             coordinates.
-        The final matrix is 2d with each row referring to a requested point and each column
-             referring to the mesh's vertex index. The element (value) is the Barycentric
-             coordinate for that point according to that mesh vertex.
+        For a given set of points, construct an 'interpolator' matrix, such
+        that its product with a vector of field values at each mesh vertex
+        yields the interpolated values of the field at the given set of points.
+
+        :param R: \
+            The major-radius of each interpolation point as 1D ``numpy.ndarray``.
+
+        :param z: \
+            The z-height of each interpolation point as a 1D ``numpy.ndarray``.
+
+        :return: \
+            The interpolator matrix as a 2D ``numpy.ndarray`` with a shape of
+            the number of interpolation points by the number of mesh vertices.
         """
-        points = atleast_2d(points)
-        if len(points.shape) > 2:
+        R_vals = atleast_1d(R)
+        z_vals = atleast_1d(z)
+
+        if R_vals.ndim != 1 or z_vals.ndim != 1 or R_vals.size != z_vals.size:
             raise ValueError(
                 f"""\n
                 [ TriangularMesh error ]
-                >> The expected format of the points variable is an array of r-z pairs.
-                >> A two-dimensional array was expected but a the array provided has
-                >> shape {points.shape}. 
+                >> The 'R' and 'z' arguments of build_interpolator_matrix
+                >> must be 1D arrays of equal size, however their shapes are
+                >> {R_vals.shape}, {z_vals.shape}
+                >> respectively.
                 """
             )
 
-        if points.shape[1] != 2:
-            raise ValueError(
-                f"""\n
-                [ TriangularMesh error ]
-                >> The expected format of the points variable is an array of r-z pairs.
-                >> The second dimension was expected to have size two but the array
-                >> provided has shape {points.shape}. 
-                """
-            )
-
-        G = zeros([len(points), self.n_vertices])
-        for q, p in enumerate(points):
-            unique_coords, slices, _ = self.grid_lookup(p[0], p[1])
-            for v, slc in zip(unique_coords, slices):
-                # only need to proceed if the current coordinate contains triangles
-                key = (v[0], v[1])
-                if key in self.tree_map:
-                    # get triangles intersecting this cell
-                    search_triangles = self.tree_map[key]
-                    # get the barycentric coord values of each point, and the
-                    # index of the triangle which contains them
-                    coords, container_triangles = self.bary_coords(
-                        p[0], p[1], search_triangles
-                    )
-                    inds = self.triangle_vertices[container_triangles, :]
-                    inds = inds.flatten()
-                    coords = coords.flatten()
-                    for i, v in zip(inds, coords):
-                        G[q, i] = v
-        return G
+        interpolator_matrix = zeros([R_vals.size, self.n_vertices])
+        # lookup sets of coordinates are in each grid cell
+        unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
+        # loop over each unique grid coordinate
+        for v, slc in zip(unique_coords, slices):
+            # only need to proceed if the current coordinate contains triangles
+            key = (v[0], v[1])
+            if key in self.tree_map:
+                # get triangles intersecting this cell
+                search_triangles = self.tree_map[key]
+                cell_indices = indices[slc]  # the indices of points inside this cell
+                # get the barycentric coord values of each point, and the
+                # index of the triangle which contains them
+                coords, container_triangles = self.bary_coords(
+                    R_vals[cell_indices], z_vals[cell_indices], search_triangles
+                )
+                # get corresponding cell indices for the vertex indices
+                vertex_inds = self.triangle_vertices[container_triangles, :]
+                # insert the coordinate values into the matrix
+                interpolator_matrix[cell_indices[:, None], vertex_inds] = coords
+        return interpolator_matrix
 
     def save(self, filepath):
+        """
+        Save the mesh using the numpy 'npz' format.
+
+        :param str filepath:
+            File path to which the mesh will be saved.
+        """
         savez(filepath, R=self.R, z=self.z, triangles=self.triangle_vertices)
 
     @classmethod
     def load(cls, filepath):
+        """
+        Load and return a previously saved instance of ``TriangularMesh``.
+
+        :param str filepath:
+            File path of the saved mesh.
+
+        :return:
+            The loaded mesh as an instance of ``TriangularMesh``.
+        """
         D = load(filepath)
         return cls(R=D["R"], z=D["z"], triangles=D["triangles"])
 
