@@ -13,7 +13,7 @@ except PackageNotFoundError:
 __all__ = ["__version__"]
 
 from numpy import searchsorted, stack, log2, floor, unique, atleast_1d
-from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray, tile
+from numpy import arange, linspace, int64, full, zeros, meshgrid, ndarray
 from numpy import savez, load
 from itertools import product
 from tokamesh.intersection import edge_rectangle_intersection
@@ -182,7 +182,7 @@ class TriangularMesh(object):
             raise ValueError(
                 f"""\n
                 [ TriangularMesh error ]
-                >> The size of 'vertex_values' argument of the TriangularMesh.interpolate
+                >> The size of the 'vertex_values' argument of TriangularMesh.interpolate
                 >> must be equal to the number of mesh vertices.
                 >> The mesh has {self.n_vertices} vertices but given array is of size {vertex_values.size}.
                 """
@@ -193,10 +193,11 @@ class TriangularMesh(object):
 
         if R_vals.shape != z_vals.shape:
             raise ValueError(
-                """\n
+                f"""\n
                 [ TriangularMesh error ]
-                >> The 'R' and 'z' arrays passed to the TriangularMesh.interpolate
-                >> method are of inconsistent shapes - their shapes must be equal.
+                >> The 'R' and 'z' arguments of TriangularMesh.interpolate
+                >> have inconsistent shapes:
+                >> {R_vals.shape} != {z_vals.shape}
                 """
             )
 
@@ -249,10 +250,11 @@ class TriangularMesh(object):
 
         if R_vals.shape != z_vals.shape:
             raise ValueError(
-                """\n
+                f"""\n
                 [ TriangularMesh error ]
-                >> The 'R' and 'z' arrays passed to the TriangularMesh.interpolate
-                >> method are of inconsistent shapes - their shapes must be equal.
+                >> The 'R' and 'z' arguments of TriangularMesh.find_triangle
+                >> have inconsistent shapes:
+                >> {R_vals.shape} != {z_vals.shape}
                 """
             )
 
