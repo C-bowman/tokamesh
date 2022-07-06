@@ -537,7 +537,7 @@ class LinearGeometryMatrix:
 
         # calculate the ray data
         diffs = ray_ends - ray_origins
-        self.lengths = sqrt((diffs ** 2).sum(axis=1))
+        self.lengths = sqrt((diffs**2).sum(axis=1))
         self.rays = diffs / self.lengths[:, None]
         self.pixels = ray_origins
         self.n_rays = self.lengths.size
@@ -545,7 +545,7 @@ class LinearGeometryMatrix:
         # coefficients for the quadratic representation of the ray radius
         self.q0 = self.pixels[:, 0] ** 2 + self.pixels[:, 1] ** 2
         self.q1 = 2 * (
-                self.pixels[:, 0] * self.rays[:, 0] + self.pixels[:, 1] * self.rays[:, 1]
+            self.pixels[:, 0] * self.rays[:, 0] + self.pixels[:, 1] * self.rays[:, 1]
         )
         self.q2 = self.rays[:, 0] ** 2 + self.rays[:, 1] ** 2
         self.sqrt_q2 = sqrt(self.q2)
@@ -557,18 +557,24 @@ class LinearGeometryMatrix:
 
         intersections = full([self.n_rays, self.n_points, 2], fill_value=nan)
         c = self.q0[:, None] - self.R[None, :]
-        descrim_sqrt = sqrt(self.q1[:, None]**2 - 4 * self.q2[:, None] * c)
+        descrim_sqrt = sqrt(self.q1[:, None] ** 2 - 4 * self.q2[:, None] * c)
 
-        intersections[:, :, 0] = 0.5*(-self.q1[:, None] - descrim_sqrt) / self.q2[:, None]
-        intersections[:, :, 1] = 0.5*(-self.q1[:, None] + descrim_sqrt) / self.q2[:, None]
+        intersections[:, :, 0] = (
+            0.5 * (-self.q1[:, None] - descrim_sqrt) / self.q2[:, None]
+        )
+        intersections[:, :, 1] = (
+            0.5 * (-self.q1[:, None] + descrim_sqrt) / self.q2[:, None]
+        )
         # clip all the intersections so that they lie in the allowed range
         maximum(intersections, 0.0, out=intersections)
         minimum(intersections, self.lengths[:, None, None], out=intersections)
 
         # now loop over cells
         G = zeros([self.n_rays, self.n_points])
-        for cell in range(self.n_points-1):
-            cell_intersects = stack(intersections[:, cell, :], intersections[:, cell + 1, :])
+        for cell in range(self.n_points - 1):
+            cell_intersects = stack(
+                intersections[:, cell, :], intersections[:, cell + 1, :]
+            )
             assert cell_intersects.shape == (self.n_rays, 4)
             cell_intersects.sort(axis=1)
 
@@ -585,4 +591,3 @@ class LinearGeometryMatrix:
             for j in range(max_intersections // 2):
                 indices = (intersection_count >= 2 * (j + 1)).nonzero()[0]
                 # calculate the integrals of the barycentric coords over the intersection path
-
