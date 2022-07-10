@@ -1,6 +1,6 @@
 from numpy import sqrt, log, pi, tan, dot, cross, identity
-from numpy import absolute, nan, isfinite, minimum, maximum
-from numpy import array, ndarray, linspace, full, zeros, stack, savez, int64
+from numpy import absolute, nan, isfinite, minimum, maximum, isnan
+from numpy import array, ndarray, linspace, full, zeros, stack, savez, int64, concatenate
 from collections import defaultdict
 from time import perf_counter
 import sys
@@ -520,74 +520,102 @@ class Camera(object):
         return R, z
 
 
-class LinearGeometryMatrix:
-    def __init__(self, R, ray_origins, ray_ends):
-        # first check the validity of the data
-
-        self.R = R
-        self.n_points = self.R.size
-
-        # calculate linear basis function coefficients
-        self.grads = zeros([self.n_points - 1, 2])
-        self.grads[:, 1] = self.R[1:] - self.R[:-1]
-        self.grads[:, 0] = -self.grads[:, 1]
-        self.offsets = zeros([self.n_points, 2])
-        self.offsets[:, 0] = -self.grads[:, 0] * self.R[1:]
-        self.offsets[:, 1] = -self.grads[:, 1] * self.R[:-1]
-
-        # calculate the ray data
-        diffs = ray_ends - ray_origins
-        self.lengths = sqrt((diffs**2).sum(axis=1))
-        self.rays = diffs / self.lengths[:, None]
-        self.pixels = ray_origins
-        self.n_rays = self.lengths.size
-
-        # coefficients for the quadratic representation of the ray radius
-        self.q0 = self.pixels[:, 0] ** 2 + self.pixels[:, 1] ** 2
-        self.q1 = 2 * (
-            self.pixels[:, 0] * self.rays[:, 0] + self.pixels[:, 1] * self.rays[:, 1]
-        )
-        self.q2 = self.rays[:, 0] ** 2 + self.rays[:, 1] ** 2
-        self.sqrt_q2 = sqrt(self.q2)
-
-        # calculate terms used in the linear inequalities
-        self.L_tan = -0.5 * self.q1 / self.q2  # distance of the tangency point
-        self.R_tan_sqr = self.q0 + 0.5 * self.q1 * self.L_tan
-        self.R_tan = sqrt(self.R_tan_sqr)  # major radius of the tangency point
-
-        intersections = full([self.n_rays, self.n_points, 2], fill_value=nan)
-        c = self.q0[:, None] - self.R[None, :]
-        descrim_sqrt = sqrt(self.q1[:, None] ** 2 - 4 * self.q2[:, None] * c)
-
-        intersections[:, :, 0] = (
-            0.5 * (-self.q1[:, None] - descrim_sqrt) / self.q2[:, None]
-        )
-        intersections[:, :, 1] = (
-            0.5 * (-self.q1[:, None] + descrim_sqrt) / self.q2[:, None]
-        )
-        # clip all the intersections so that they lie in the allowed range
-        maximum(intersections, 0.0, out=intersections)
-        minimum(intersections, self.lengths[:, None, None], out=intersections)
-
-        # now loop over cells
-        G = zeros([self.n_rays, self.n_points])
-        for cell in range(self.n_points - 1):
-            cell_intersects = stack(
-                intersections[:, cell, :], intersections[:, cell + 1, :]
+def linear_geometry_matrix(R, ray_origins, ray_ends):
+    # verify the inputs are all numpy arrays
+    for name, var in [("R", R), ("ray_origins", ray_origins), ("ray_ends", ray_ends)]:
+        if type(var) is not ndarray:
+            raise TypeError(
+                f"""
+                [ linear_geometry_matrix error ]
+                >> '{name}' argument must have type: 
+                >> {ndarray}
+                >> but instead has type:
+                >> {type(var)}
+                """
             )
-            assert cell_intersects.shape == (self.n_rays, 4)
-            cell_intersects.sort(axis=1)
 
-            # check where valid intersections exist, and count how many there are per ray
-            valid_intersects = isfinite(cell_intersects)
-            intersection_count = valid_intersects.sum(axis=1)
+    # check all shapes of the inputs
+    n_points = R.size
+    if R.ndim != 1 or R.size < 3:
+        raise ValueError(
+            f"""
+            [ linear_geometry_matrix error ]
+            >> 'R' argument must have one dimension and at least 3 elements,
+            >> but instead has {R.ndim} dimensions and {R.size} elements.
+            """
+        )
 
-            # At this point, each ray should have an even number of intersections, if any
-            # have an odd number then something has gone wrong, so raise an error.
-            if (intersection_count % 2 == 1).any():
-                raise ValueError("One or more rays has an odd number of intersections")
+    good_rays = (
+        ray_origins.ndim == ray_ends.ndim == 2
+        and ray_origins.shape[0] == ray_origins.shape[0]
+        and ray_origins.shape[1] == ray_origins.shape[1] == 3
+    )
+    if not good_rays:
+        raise ValueError(
+            f"""
+            [ linear_geometry_matrix error ]
+            >> 'ray_origins' and 'ray_ends' must both have shape (N, 3)
+            >> where 'N' is the number of rays. Instead, they have shapes
+            >> {ray_origins.shape}, {ray_ends.shape}
+            >> respectively.
+            """
+        )
 
-            max_intersections = intersection_count.max()
-            for j in range(max_intersections // 2):
-                indices = (intersection_count >= 2 * (j + 1)).nonzero()[0]
-                # calculate the integrals of the barycentric coords over the intersection path
+    # calculate linear basis function coefficients
+    grads = zeros([n_points - 1, 2])
+    grads[:, 1] = 1. / (R[1:] - R[:-1])
+    grads[:, 0] = -grads[:, 1]
+    offsets = zeros([n_points - 1, 2])
+    offsets[:, 0] = -grads[:, 0] * R[1:]
+    offsets[:, 1] = -grads[:, 1] * R[:-1]
+
+    # calculate the ray data
+    diffs = ray_ends - ray_origins
+    lengths = sqrt((diffs**2).sum(axis=1))
+    rays = diffs / lengths[:, None]
+    n_rays = lengths.size
+
+    # coefficients for the quadratic representation of the ray radius
+    q0 = ray_origins[:, 0] ** 2 + ray_origins[:, 1] ** 2
+    q1 = 2 * (ray_origins[:, 0] * rays[:, 0] + ray_origins[:, 1] * rays[:, 1])
+    q2 = rays[:, 0] ** 2 + rays[:, 1] ** 2
+    sqrt_q2 = sqrt(q2)
+
+    # pre-calculate quantities used in intersection and integral
+    L_tan = -0.5 * q1 / q2  # ray-distance of the tangency point
+    L_tan_sqr = L_tan ** 2
+    R_tan_sqr = q0 + 0.5 * q1 * L_tan  # major radius of the tangency point squared
+
+    # each possible pairing of ray and radius can have up to two intersections
+    intersections = zeros([n_rays, n_points, 2])
+    # solve for the intersections via quadratic formula
+    c = q0[:, None] - R[None, :]**2
+    descrim_sqrt = sqrt(L_tan_sqr[:, None] - c / q2[:, None])
+    intersections[:, :, 0] = L_tan[:, None] - descrim_sqrt
+    intersections[:, :, 1] = L_tan[:, None] + descrim_sqrt
+
+    # clip all the intersections so that they lie in the allowed range
+    maximum(intersections, 0.0, out=intersections)
+    minimum(intersections, lengths[:, None, None], out=intersections)
+    intersections[isnan(intersections)] = 0.
+
+    # now loop over each cell, and add the contribution to the geometry matrix
+    G = zeros([n_rays, n_points])
+    for cell in range(n_points - 1):
+        cell_intersects = concatenate(
+            [intersections[:, cell, :], intersections[:, cell + 1, :]], axis=1
+        )
+        cell_intersects.sort(axis=1)
+
+        for i, j in [(0, 1), (2, 3)]:
+            integral = radius_hyperbolic_integral(
+                l1=cell_intersects[:, i],
+                l2=cell_intersects[:, j],
+                l_tan=L_tan,
+                R_tan_sqr=R_tan_sqr,
+                sqrt_q2=sqrt_q2
+            )
+            dl = cell_intersects[:, j] - cell_intersects[:, i]
+            G[:, cell] += integral*grads[cell, 0] + offsets[cell, 0]*dl
+            G[:, cell + 1] += integral*grads[cell, 1] + offsets[cell, 1]*dl
+    return G
