@@ -1,6 +1,16 @@
 from numpy import sqrt, log, pi, tan, dot, cross, identity
 from numpy import absolute, nan, isfinite, minimum, maximum, isnan
-from numpy import array, ndarray, linspace, full, zeros, stack, savez, int64, concatenate
+from numpy import (
+    array,
+    ndarray,
+    linspace,
+    full,
+    zeros,
+    stack,
+    savez,
+    int64,
+    concatenate,
+)
 from collections import defaultdict
 from time import perf_counter
 import sys
@@ -563,7 +573,7 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
 
     # calculate linear basis function coefficients
     grads = zeros([n_points - 1, 2])
-    grads[:, 1] = 1. / (R[1:] - R[:-1])
+    grads[:, 1] = 1.0 / (R[1:] - R[:-1])
     grads[:, 0] = -grads[:, 1]
     offsets = zeros([n_points - 1, 2])
     offsets[:, 0] = -grads[:, 0] * R[1:]
@@ -583,13 +593,13 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
 
     # pre-calculate quantities used in intersection and integral
     L_tan = -0.5 * q1 / q2  # ray-distance of the tangency point
-    L_tan_sqr = L_tan ** 2
+    L_tan_sqr = L_tan**2
     R_tan_sqr = q0 + 0.5 * q1 * L_tan  # major radius of the tangency point squared
 
     # each possible pairing of ray and radius can have up to two intersections
     intersections = zeros([n_rays, n_points, 2])
     # solve for the intersections via quadratic formula
-    c = q0[:, None] - R[None, :]**2
+    c = q0[:, None] - R[None, :] ** 2
     descrim_sqrt = sqrt(L_tan_sqr[:, None] - c / q2[:, None])
     intersections[:, :, 0] = L_tan[:, None] - descrim_sqrt
     intersections[:, :, 1] = L_tan[:, None] + descrim_sqrt
@@ -597,7 +607,7 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
     # clip all the intersections so that they lie in the allowed range
     maximum(intersections, 0.0, out=intersections)
     minimum(intersections, lengths[:, None, None], out=intersections)
-    intersections[isnan(intersections)] = 0.
+    intersections[isnan(intersections)] = 0.0
 
     # now loop over each cell, and add the contribution to the geometry matrix
     G = zeros([n_rays, n_points])
@@ -613,9 +623,9 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
                 l2=cell_intersects[:, j],
                 l_tan=L_tan,
                 R_tan_sqr=R_tan_sqr,
-                sqrt_q2=sqrt_q2
+                sqrt_q2=sqrt_q2,
             )
             dl = cell_intersects[:, j] - cell_intersects[:, i]
-            G[:, cell] += integral*grads[cell, 0] + offsets[cell, 0]*dl
-            G[:, cell + 1] += integral*grads[cell, 1] + offsets[cell, 1]*dl
+            G[:, cell] += integral * grads[cell, 0] + offsets[cell, 0] * dl
+            G[:, cell + 1] += integral * grads[cell, 1] + offsets[cell, 1] * dl
     return G
