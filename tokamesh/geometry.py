@@ -522,6 +522,23 @@ class Camera(object):
 
 
 def linear_geometry_matrix(R, ray_origins, ray_ends):
+    """
+    Calculates a geometry matrix using 1D linear-interpolation basis functions
+    assuming that the emission varies only as a function of major-radius.
+
+    :param R: \
+        The major-radius position of each basis function in ascending order.
+
+    :param ray_origins: \
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param ray_ends: \
+        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+    """
     # verify the inputs are all numpy arrays
     for name, var in [("R", R), ("ray_origins", ray_origins), ("ray_ends", ray_ends)]:
         if type(var) is not ndarray:
@@ -543,6 +560,14 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
             [ linear_geometry_matrix error ]
             >> 'R' argument must have one dimension and at least 3 elements,
             >> but instead has {R.ndim} dimensions and {R.size} elements.
+            """
+        )
+
+    if (R[1:] - R[:-1] <= 0).any():
+        raise ValueError(
+            """
+            [ linear_geometry_matrix error ]
+            >> 'R' argument be sorted in ascending order, and contain only unique values.
             """
         )
 
