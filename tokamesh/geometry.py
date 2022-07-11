@@ -1,6 +1,7 @@
 from numpy import sqrt, log, pi, tan, dot, cross, identity
-from numpy import absolute, nan, isfinite, minimum, maximum
-from numpy import array, ndarray, linspace, full, zeros, stack, savez, int64
+from numpy import absolute, nan, isfinite, minimum, maximum, isnan
+from numpy import array, linspace, full, zeros, stack, savez, concatenate
+from numpy import ndarray, int64
 from collections import defaultdict
 from time import perf_counter
 import sys
@@ -518,3 +519,131 @@ class Camera(object):
         R = sqrt(positions[:, 0, :] ** 2 + positions[:, 1, :] ** 2).T
         z = positions[:, 2, :].T
         return R, z
+
+
+def linear_geometry_matrix(R, ray_origins, ray_ends):
+    """
+    Calculates a geometry matrix using 1D linear-interpolation basis functions
+    assuming that the emission varies only as a function of major-radius.
+
+    :param R: \
+        The major-radius position of each basis function in ascending order.
+
+    :param ray_origins: \
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param ray_ends: \
+        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+    """
+    # verify the inputs are all numpy arrays
+    for name, var in [("R", R), ("ray_origins", ray_origins), ("ray_ends", ray_ends)]:
+        if type(var) is not ndarray:
+            raise TypeError(
+                f"""
+                [ linear_geometry_matrix error ]
+                >> '{name}' argument must have type: 
+                >> {ndarray}
+                >> but instead has type:
+                >> {type(var)}
+                """
+            )
+
+    # check all shapes of the inputs
+    n_points = R.size
+    if R.ndim != 1 or R.size < 3:
+        raise ValueError(
+            f"""
+            [ linear_geometry_matrix error ]
+            >> 'R' argument must have one dimension and at least 3 elements,
+            >> but instead has {R.ndim} dimensions and {R.size} elements.
+            """
+        )
+
+    if (R[1:] - R[:-1] <= 0).any():
+        raise ValueError(
+            """
+            [ linear_geometry_matrix error ]
+            >> 'R' argument be sorted in ascending order, and contain only unique values.
+            """
+        )
+
+    good_rays = (
+        ray_origins.ndim == ray_ends.ndim == 2
+        and ray_origins.shape[0] == ray_origins.shape[0]
+        and ray_origins.shape[1] == ray_origins.shape[1] == 3
+    )
+    if not good_rays:
+        raise ValueError(
+            f"""
+            [ linear_geometry_matrix error ]
+            >> 'ray_origins' and 'ray_ends' must both have shape (N, 3)
+            >> where 'N' is the number of rays. Instead, they have shapes
+            >> {ray_origins.shape}, {ray_ends.shape}
+            >> respectively.
+            """
+        )
+
+    # calculate linear basis function coefficients
+    grads = zeros([n_points - 1, 2])
+    grads[:, 1] = 1.0 / (R[1:] - R[:-1])
+    grads[:, 0] = -grads[:, 1]
+    offsets = zeros([n_points - 1, 2])
+    offsets[:, 0] = -grads[:, 0] * R[1:]
+    offsets[:, 1] = -grads[:, 1] * R[:-1]
+
+    # calculate the ray data
+    diffs = ray_ends - ray_origins
+    lengths = sqrt((diffs**2).sum(axis=1))
+    rays = diffs / lengths[:, None]
+    n_rays = lengths.size
+
+    # coefficients for the quadratic representation of the ray radius
+    q0 = ray_origins[:, 0] ** 2 + ray_origins[:, 1] ** 2
+    q1 = 2 * (ray_origins[:, 0] * rays[:, 0] + ray_origins[:, 1] * rays[:, 1])
+    q2 = rays[:, 0] ** 2 + rays[:, 1] ** 2
+    sqrt_q2 = sqrt(q2)
+
+    # pre-calculate quantities used in intersection and integral
+    L_tan = -0.5 * q1 / q2  # ray-distance of the tangency point
+    L_tan_sqr = L_tan**2
+    R_tan_sqr = q0 + 0.5 * q1 * L_tan  # major radius of the tangency point squared
+
+    # each possible pairing of ray and radius can have up to two intersections
+    intersections = zeros([n_rays, n_points, 2])
+    # solve for the intersections via quadratic formula
+    c = q0[:, None] - R[None, :] ** 2
+    discriminant = L_tan_sqr[:, None] - c / q2[:, None]
+    discriminant[discriminant < 0] = nan
+    roots = sqrt(discriminant)
+    intersections[:, :, 0] = L_tan[:, None] - roots
+    intersections[:, :, 1] = L_tan[:, None] + roots
+
+    # clip all the intersections so that they lie in the allowed range
+    maximum(intersections, 0.0, out=intersections)
+    minimum(intersections, lengths[:, None, None], out=intersections)
+    intersections[isnan(intersections)] = 0.0
+
+    # now loop over each cell, and add the contribution to the geometry matrix
+    G = zeros([n_rays, n_points])
+    for cell in range(n_points - 1):
+        cell_intersects = concatenate(
+            [intersections[:, cell, :], intersections[:, cell + 1, :]], axis=1
+        )
+        cell_intersects.sort(axis=1)
+
+        for i, j in [(0, 1), (2, 3)]:
+            integral = radius_hyperbolic_integral(
+                l1=cell_intersects[:, i],
+                l2=cell_intersects[:, j],
+                l_tan=L_tan,
+                R_tan_sqr=R_tan_sqr,
+                sqrt_q2=sqrt_q2,
+            )
+            dl = cell_intersects[:, j] - cell_intersects[:, i]
+            G[:, cell] += integral * grads[cell, 0] + offsets[cell, 0] * dl
+            G[:, cell + 1] += integral * grads[cell, 1] + offsets[cell, 1] * dl
+    return G
