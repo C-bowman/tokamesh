@@ -591,9 +591,11 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
     intersections = zeros([n_rays, n_points, 2])
     # solve for the intersections via quadratic formula
     c = q0[:, None] - R[None, :] ** 2
-    descrim_sqrt = sqrt(L_tan_sqr[:, None] - c / q2[:, None])
-    intersections[:, :, 0] = L_tan[:, None] - descrim_sqrt
-    intersections[:, :, 1] = L_tan[:, None] + descrim_sqrt
+    discriminant = L_tan_sqr[:, None] - c / q2[:, None]
+    discriminant[discriminant < 0] = nan
+    roots = sqrt(discriminant)
+    intersections[:, :, 0] = L_tan[:, None] - roots
+    intersections[:, :, 1] = L_tan[:, None] + roots
 
     # clip all the intersections so that they lie in the allowed range
     maximum(intersections, 0.0, out=intersections)
