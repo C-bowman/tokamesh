@@ -1,16 +1,7 @@
 from numpy import sqrt, log, pi, tan, dot, cross, identity
 from numpy import absolute, nan, isfinite, minimum, maximum, isnan
-from numpy import (
-    array,
-    ndarray,
-    linspace,
-    full,
-    zeros,
-    stack,
-    savez,
-    int64,
-    concatenate,
-)
+from numpy import array, linspace, full, zeros, stack, savez, concatenate
+from numpy import ndarray, int64
 from collections import defaultdict
 from time import perf_counter
 import sys
