@@ -112,7 +112,7 @@ def test_linear_geometry_matrix():
 
         def __call__(self, x):
             conds = [(self.a <= x) & (x < self.b), (self.b <= x) & (x < self.c)]
-            funcs = [self.lhs, self.rhs, lambda z: z * 0.]
+            funcs = [self.lhs, self.rhs, lambda z: z * 0.0]
             return piecewise(x, conds, funcs)
 
         def lhs(self, x):
@@ -122,7 +122,7 @@ def test_linear_geometry_matrix():
             return self.m2 * x + self.c2
 
     def solve_quadratic(a, b, c):
-        descrim = b ** 2 - 4 * a * c
+        descrim = b**2 - 4 * a * c
         if descrim >= 0:
             t1, t2 = -0.5 * b / a, 0.5 * sqrt(descrim) / a
             return t1 - t2, t1 + t2
@@ -147,10 +147,10 @@ def test_linear_geometry_matrix():
         q2 = rays[i, 0] ** 2 + rays[i, 1] ** 2
         q1 = 2 * (origins[i, 0] * rays[i, 0] + origins[i, 1] * rays[i, 1])
         q0 = origins[i, 0] ** 2 + origins[i, 1] ** 2
-        col_roots = solve_quadratic(a=q2, b=q1, c=q0 - 0.2 ** 2)
-        wall_roots = solve_quadratic(a=q2, b=q1, c=q0 - 2 ** 2)
+        col_roots = solve_quadratic(a=q2, b=q1, c=q0 - 0.2**2)
+        wall_roots = solve_quadratic(a=q2, b=q1, c=q0 - 2**2)
         roots = [*col_roots, *wall_roots]
-        lengths[i] = min([r for r in roots if r > 0.])
+        lengths[i] = min([r for r in roots if r > 0.0])
     ends = origins + rays * lengths[:, None]
 
     # define the emission as a function of the radius
@@ -158,14 +158,10 @@ def test_linear_geometry_matrix():
     R = linspace(0.25, 1.6, n_points)
     z1 = (R - 1.4) / 0.05
     z2 = (R - 0.35) / 0.02
-    emission = exp(-0.5 * z1 ** 2) + 0.5 * exp(-0.5 * z2 ** 2) + 0.005
+    emission = exp(-0.5 * z1**2) + 0.5 * exp(-0.5 * z2**2) + 0.005
 
     # Use geometry matrix to calculate the analytic integral result
-    G = linear_geometry_matrix(
-        R=R,
-        ray_origins=origins,
-        ray_ends=ends
-    )
+    G = linear_geometry_matrix(R=R, ray_origins=origins, ray_ends=ends)
     analytic_integral = G.dot(emission)
 
     # Directly integrate over the basis functions to get the numerical integral
@@ -177,7 +173,7 @@ def test_linear_geometry_matrix():
         L = linspace(0, lengths[i], 5000)
         x_ray = rays[i, 0] * L + origins[i, 0]
         y_ray = rays[i, 1] * L + origins[i, 1]
-        R = sqrt(x_ray ** 2 + y_ray ** 2)
+        R = sqrt(x_ray**2 + y_ray**2)
         F = sum(w * lbf(R) for lbf, w in zip(basis, emission))
         numerical_integral[i] = simps(F, x=L)
 
