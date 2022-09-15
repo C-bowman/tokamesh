@@ -1,4 +1,15 @@
-from numpy import array, full, ones, arange, tile, diff, sqrt, concatenate, ndarray, zeros
+from numpy import (
+    array,
+    full,
+    ones,
+    arange,
+    tile,
+    diff,
+    sqrt,
+    concatenate,
+    ndarray,
+    zeros,
+)
 from scipy.sparse import csc_matrix, csr_matrix
 from scipy.special import factorial
 from scipy.linalg import solve
@@ -7,11 +18,7 @@ from tokamesh.geometry import build_edge_map
 
 
 def edge_difference_matrix(
-        R: ndarray,
-        z: ndarray,
-        triangles: ndarray,
-        normalised=False,
-        sparse_format="csr"
+    R: ndarray, z: ndarray, triangles: ndarray, normalised=False, sparse_format="csr"
 ):
     """
     Generates a sparse matrix which, when operating on a vector of field
@@ -153,11 +160,7 @@ def umbrella_matrix(
 
 
 def parallel_derivative(
-        R: ndarray,
-        z: ndarray,
-        index_grid: ndarray,
-        order=2,
-        sparse_format="csr"
+    R: ndarray, z: ndarray, index_grid: ndarray, order=2, sparse_format="csr"
 ):
     """
     ...
@@ -187,7 +190,7 @@ def parallel_derivative(
     prod = product(range(1, index_grid.shape[0] - 1), range(index_grid.shape[1]))
     for k, (i, j) in enumerate(prod):
         inds = index_grid[i - 1 : i + 2, j]
-        dl = sqrt(diff(R[inds])**2 + diff(z[inds])**2)
+        dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
         pol_dist = array([0.0, dl[0], dl.sum()])
         coeffs = get_fd_coeffs(pol_dist, order=order)
 
@@ -204,11 +207,7 @@ def parallel_derivative(
 
 
 def perpendicular_derivative(
-        R: ndarray,
-        z: ndarray,
-        index_grid: ndarray,
-        order=2,
-        sparse_format="csr"
+    R: ndarray, z: ndarray, index_grid: ndarray, order=2, sparse_format="csr"
 ):
     """
     ...
