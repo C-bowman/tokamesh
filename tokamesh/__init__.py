@@ -448,6 +448,30 @@ class TriangularMesh(object):
         return cls(R=D["R"], z=D["z"], triangles=D["triangles"])
 
 
+class FieldAlignedMesh(TriangularMesh):
+    def __init__(self, R, z, triangles, index_grid, psi, poloidal_distance):
+        super(FieldAlignedMesh, self).__init__(R, z, triangles)
+        self.index_grid = index_grid
+        self.psi = psi
+        self.poloidal_distance = poloidal_distance
+
+    def save(self, filepath):
+        savez(
+            filepath,
+            R=self.R,
+            z=self.z,
+            triangles=self.triangle_vertices,
+            index_grid=self.index_grid,
+            psi=self.psi,
+            poloidal_distance=self.poloidal_distance,
+        )
+
+    @classmethod
+    def load(cls, filepath):
+        D = load(filepath)
+        return cls(**D)
+
+
 class BinaryTree:
     """
     divides the range specified by limits into n = 2**layers equal regions,
