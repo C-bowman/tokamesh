@@ -16,7 +16,7 @@ def test_equilateral_mesh():
     assert np.all(y >= y_min)
     assert np.all(y <= y_max)
 
-    expected_num_points = (1 + ((x_max - x_min) // (resolution))) * (
+    expected_num_points = (1 + ((x_max - x_min) // resolution)) * (
         1 + ((y_max - y_min) // (resolution * np.sqrt(3) / 2))
     )
     assert len(x) == expected_num_points
@@ -35,7 +35,7 @@ def test_equilateral_mesh_rotated():
     assert np.allclose(y, -x_rot)
     assert np.allclose(x, y_rot)
 
-    expected_num_points = (1 + ((y_max - y_min) // (resolution))) * (
+    expected_num_points = (1 + ((y_max - y_min) // resolution)) * (
         1 + ((x_max - x_min) // (resolution * np.sqrt(3) / 2))
     )
     assert len(x) == expected_num_points
