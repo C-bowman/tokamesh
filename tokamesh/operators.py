@@ -1,15 +1,5 @@
-from numpy import (
-    array,
-    full,
-    ones,
-    arange,
-    tile,
-    diff,
-    sqrt,
-    concatenate,
-    ndarray,
-    zeros,
-)
+from numpy import arange, array, concatenate, full, ones, tile, ndarray, zeros
+from numpy import sqrt, diff
 from scipy.sparse import csc_matrix, csr_matrix
 from scipy.special import factorial
 from scipy.linalg import solve
@@ -191,7 +181,7 @@ def parallel_derivative(
     for k, (i, j) in enumerate(prod):
         inds = index_grid[i - 1 : i + 2, j]
         dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
-        pol_dist = array([0.0, dl[0], dl.sum()])
+        pol_dist = array([-dl[0], 0.0, dl[1]])
         coeffs = get_fd_coeffs(pol_dist, order=order)
 
         values[:, k] = coeffs
@@ -238,8 +228,8 @@ def perpendicular_derivative(
     for k, (i, j) in enumerate(prod):
         inds = index_grid[i, j - 1 : j + 2]
         dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
-        pol_dist = array([0.0, dl[0], dl.sum()])
-        coeffs = get_fd_coeffs(pol_dist, order=order)
+        perp_dist = array([-dl[0], 0.0, dl[1]])
+        coeffs = get_fd_coeffs(perp_dist, order=order)
 
         values[:, k] = coeffs
         i_indices[:, k] = inds[1]
