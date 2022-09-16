@@ -172,20 +172,30 @@ def parallel_derivative(
         the ``scipy.sparse.csr_matrix`` format, and ``'csc'`` for the ``scipy.sparse.csc_matrix``
         format.
     """
-    shape = (3, (index_grid.shape[0] - 2) * index_grid.shape[1])
+    shape = (3, index_grid.shape[0] * index_grid.shape[1])
     values = zeros(shape)
     i_indices = zeros(shape)
     j_indices = zeros(shape)
 
-    prod = product(range(1, index_grid.shape[0] - 1), range(index_grid.shape[1]))
+    prod = product(range(index_grid.shape[0]), range(index_grid.shape[1]))
     for k, (i, j) in enumerate(prod):
-        inds = index_grid[i - 1 : i + 2, j]
-        dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
-        pol_dist = array([-dl[0], 0.0, dl[1]])
+        if i == 0:
+            inds = index_grid[:3, j]
+            dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
+            pol_dist = array([0.0, dl[0], dl.sum()])
+        elif i == index_grid.shape[0] - 1:
+            inds = index_grid[-3:, j]
+            dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
+            pol_dist = array([-dl.sum(), -dl[1], 0.0])
+        else:
+            inds = index_grid[i - 1 : i + 2, j]
+            dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
+            pol_dist = array([-dl[0], 0.0, dl[1]])
+
         coeffs = get_fd_coeffs(pol_dist, order=order)
 
         values[:, k] = coeffs
-        i_indices[:, k] = inds[1]
+        i_indices[:, k] = index_grid[i, j]
         j_indices[:, k] = inds
 
     shape = (R.size, R.size)
@@ -219,20 +229,30 @@ def perpendicular_derivative(
         the ``scipy.sparse.csr_matrix`` format, and ``'csc'`` for the ``scipy.sparse.csc_matrix``
         format.
     """
-    shape = (3, index_grid.shape[0] * (index_grid.shape[1] - 2))
+    shape = (3, index_grid.shape[0] * index_grid.shape[1])
     values = zeros(shape)
     i_indices = zeros(shape)
     j_indices = zeros(shape)
 
-    prod = product(range(index_grid.shape[0]), range(1, index_grid.shape[1] - 1))
+    prod = product(range(index_grid.shape[0]), range(index_grid.shape[1]))
     for k, (i, j) in enumerate(prod):
-        inds = index_grid[i, j - 1 : j + 2]
-        dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
-        perp_dist = array([-dl[0], 0.0, dl[1]])
+        if j == 0:
+            inds = index_grid[i, :3]
+            dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
+            perp_dist = array([0.0, dl[0], dl.sum()])
+        elif j == index_grid.shape[1] - 1:
+            inds = index_grid[i, -3:]
+            dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
+            perp_dist = array([-dl.sum(), -dl[1], 0.0])
+        else:
+            inds = index_grid[i, j - 1 : j + 2]
+            dl = sqrt(diff(R[inds]) ** 2 + diff(z[inds]) ** 2)
+            perp_dist = array([-dl[0], 0.0, dl[1]])
+
         coeffs = get_fd_coeffs(perp_dist, order=order)
 
         values[:, k] = coeffs
-        i_indices[:, k] = inds[1]
+        i_indices[:, k] = index_grid[i, j]
         j_indices[:, k] = inds
 
     shape = (R.size, R.size)
