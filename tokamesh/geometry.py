@@ -1,13 +1,13 @@
 from numpy import sqrt, log, pi, tan, dot, cross, identity
 from numpy import absolute, nan, isfinite, minimum, maximum, isnan
 from numpy import array, linspace, full, zeros, stack, savez, concatenate
-from numpy import ndarray, int64
+from numpy import ndarray, int64, finfo
 from collections import defaultdict
 from time import perf_counter
 import sys
 
 
-class BarycentricGeometryMatrix(object):
+class BarycentricGeometryMatrix:
     """
     Class for calculating geometry matrices over triangular meshes using
     barycentric linear interpolation.
@@ -34,7 +34,14 @@ class BarycentricGeometryMatrix(object):
         total number of rays.
     """
 
-    def __init__(self, R, z, triangles, ray_origins, ray_ends):
+    def __init__(
+        self,
+        R: ndarray,
+        z: ndarray,
+        triangles: ndarray,
+        ray_origins: ndarray,
+        ray_ends: ndarray,
+    ):
         # first check the validity of the data
         self.check_geometry_data(R, z, triangles, ray_origins, ray_ends)
 
@@ -286,7 +293,14 @@ class BarycentricGeometryMatrix(object):
         # At this point, each ray should have an even number of intersections, if any
         # have an odd number then something has gone wrong, so raise an error.
         if (intersection_count % 2 == 1).any():
-            raise ValueError("One or more rays has an odd number of intersections")
+            raise ValueError(
+                f"""\n\n
+                \r[ BarycentricGeometryMatrix error ]
+                \r>> One or more rays has an odd number of intersections with
+                \r>> triangle {tri}. This is typically caused by insufficient
+                \r>> floating-point precision in the intersection calculations.
+                """
+            )
 
         max_intersections = intersection_count.max()
         for j in range(max_intersections // 2):
@@ -349,26 +363,26 @@ class BarycentricGeometryMatrix(object):
             type(arg) is ndarray for arg in [R, z, triangle_inds, ray_starts, ray_ends]
         ):
             raise TypeError(
-                """
-                [ BarycentricGeometryMatrix error ]
-                >> All arguments must be of type numpy.ndarray.
+                """\n\n
+                \r[ BarycentricGeometryMatrix error ]
+                \r>> All arguments must be of type numpy.ndarray.
                 """
             )
 
         if R.ndim != 1 or z.ndim != 1 or R.size != z.size:
             raise ValueError(
-                """
-                [ BarycentricGeometryMatrix error ]
-                >> 'R' and 'z' arguments must be 1-dimensional arrays of equal length.
+                """\n\n
+                \r[ BarycentricGeometryMatrix error ]
+                \r>> 'R' and 'z' arguments must be 1-dimensional arrays of equal length.
                 """
             )
 
         if triangle_inds.ndim != 2 or triangle_inds.shape[1] != 3:
             raise ValueError(
-                """
-                [ BarycentricGeometryMatrix error ]
-                >> 'triangle_inds' argument must be a 2-dimensional array of shape (N,3)
-                >> where 'N' is the total number of triangles.
+                """\n\n
+                \r[ BarycentricGeometryMatrix error ]
+                \r>> 'triangle_inds' argument must be a 2-dimensional array of shape (N,3)
+                \r>> where 'N' is the total number of triangles.
                 """
             )
 
@@ -380,12 +394,30 @@ class BarycentricGeometryMatrix(object):
             or ray_ends.shape[0] != ray_starts.shape[0]
         ):
             raise ValueError(
-                """
-                [ BarycentricGeometryMatrix error ]
-                >> 'ray_starts' and 'ray_ends' arguments must be 2-dimensional arrays
-                >> of shape (M,3), where 'M' is the total number of rays.
+                """\n\n
+                \r[ BarycentricGeometryMatrix error ]
+                \r>> 'ray_starts' and 'ray_ends' arguments must be 2-dimensional arrays
+                \r>> of shape (M,3), where 'M' is the total number of rays.
                 """
             )
+
+        for tag, arr in [
+            ("R", R),
+            ("z", z),
+            ("ray_starts", ray_starts),
+            ("ray_ends", ray_ends),
+        ]:
+            float_precision = finfo(arr.dtype).precision
+            if float_precision < 15:
+                raise ValueError(
+                    f"""\n\n
+                    \r[ BarycentricGeometryMatrix error ]
+                    \r>> The '{tag}' argument array has a data-type of {arr.dtype}
+                    \r>> with a decimal precision of {float_precision}.
+                    \r>> Arrays should use at least 64-bit floats, such that the
+                    \r>> decimal precision is 15 or above.
+                    """
+                )
 
 
 def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
@@ -398,7 +430,7 @@ def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
     return 0.5 * (u2 * R2 - u1 * R1 + log(ratio) * R_tan_sqr) / sqrt_q2
 
 
-class GeometryFactors(object):
+class GeometryFactors:
     def __init__(self):
         self.vertex_map = defaultdict(lambda: 0.0)
 
@@ -461,7 +493,7 @@ def build_edge_map(triangles):
     return triangle_edges, edge_vertices, edge_map
 
 
-class Camera(object):
+class Camera:
     def __init__(
         self, position, direction, num_x=10, num_y=10, fov=40.0, max_distance=10.0
     ):
