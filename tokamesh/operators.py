@@ -153,7 +153,9 @@ def parallel_derivative(
     R: ndarray, z: ndarray, index_grid: ndarray, order=2, sparse_format="csr"
 ):
     """
-    ...
+    Constructs a sparse matrix operator which estimates the derivative (with respect
+    to poloidal distance) of a given set of field values at each vertex in direction
+    parallel to the magnetic field.
 
     :param R: \
         The major radius of each mesh vertex as a 1D numpy array.
@@ -162,7 +164,8 @@ def parallel_derivative(
         The z-height of each mesh vertex as a 1D numpy array.
 
     :param index_grid: \
-        ...
+        A 2D numpy array specifying the indices of triangular mesh vertices
+        corresponding to each cell of the rectangular field-aligned grid.
 
     :param order: \
         The order of the derivative to be estimated. Must be either 1 or 2.
@@ -210,7 +213,9 @@ def perpendicular_derivative(
     R: ndarray, z: ndarray, index_grid: ndarray, order=2, sparse_format="csr"
 ):
     """
-    ...
+    Constructs a sparse matrix operator which estimates the derivative (with respect
+    to poloidal distance) of a given set of field values at each vertex in direction
+    perpendicular to the magnetic field.
 
     :param R: \
         The major radius of each mesh vertex as a 1D numpy array.
@@ -219,7 +224,8 @@ def perpendicular_derivative(
         The z-height of each mesh vertex as a 1D numpy array.
 
     :param index_grid: \
-        ...
+        A 2D numpy array specifying the indices of triangular mesh vertices
+        corresponding to each cell of the rectangular field-aligned grid.
 
     :param order: \
         The order of the derivative to be estimated. Must be either 1 or 2.
