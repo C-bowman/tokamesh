@@ -449,6 +449,36 @@ class TriangularMesh(object):
 
 
 class FieldAlignedMesh(TriangularMesh):
+    """
+    A triangular mesh whose vertices also form a rectangular grid corresponding
+    to the directions parallel and perpendicular to the magnetic field. This allows
+    for the construction of matrix-operators which take derivatives in the parallel
+    and perpendicular directions on the mesh.
+
+    :param R: \
+        The major radius of each mesh vertex as a 1D numpy array.
+
+    :param z: \
+        The z-height of each mesh vertex as a 1D numpy array.
+
+    :param triangles: \
+        A 2D numpy array of integers specifying the indices of the vertices which form
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
+
+    :param index_grid: \
+        A 2D numpy array specifying the indices of triangular mesh vertices
+        corresponding to each cell of the rectangular field-aligned grid.
+
+    :param psi: \
+        A 2D numpy array specifying the psi value in each cell of the
+        rectangular field-aligned grid.
+        
+    :param poloidal_distance: \
+        A 2D numpy array specifying the poloidal distance to the boundary value
+        in each cell of the rectangular field-aligned grid.
+    """
+
     def __init__(self, R, z, triangles, index_grid, psi, poloidal_distance):
         super(FieldAlignedMesh, self).__init__(R, z, triangles)
         self.index_grid = index_grid
