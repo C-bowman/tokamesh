@@ -45,6 +45,7 @@ class BarycentricGeometryMatrix:
         # first check the validity of the data
         self.check_geometry_data(R, z, triangles, ray_origins, ray_ends)
 
+        # store the mesh data
         self.R = R
         self.z = z
         self.triangle_vertices = triangles
@@ -68,15 +69,13 @@ class BarycentricGeometryMatrix:
         self.sqrt_q2 = sqrt(self.q2)
 
         # calculate terms used in the linear inequalities
-        self.L_tan = -0.5 * self.q1 / self.q2  # distance of the tangency point
+        self.L_tan = -0.5 * self.q1 / self.q2  # ray-distance of the tangency point
         self.R_tan_sqr = self.q0 + 0.5 * self.q1 * self.L_tan
         self.R_tan = sqrt(self.R_tan_sqr)  # major radius of the tangency point
-        self.z_tan = (
-            self.pixels[:, 2] + self.rays[:, 2] * self.L_tan
-        )  # z-height of the tangency point
-        self.m = self.rays[:, 2] / sqrt(
-            self.q2
-        )  # gradient of the hyperbola asymptote line
+        # z-height of the tangency point
+        self.z_tan = self.pixels[:, 2] + self.rays[:, 2] * self.L_tan
+        # gradient of the hyperbola asymptote line
+        self.m = self.rays[:, 2] / sqrt(self.q2)
 
         # Construct a mapping from triangles to edges, and edges to vertices
         self.triangle_edges, self.edge_vertices, _ = build_edge_map(
@@ -139,8 +138,8 @@ class BarycentricGeometryMatrix:
         dt = perf_counter() - t_start
 
         # use the estimate to break the evaluation into groups
-        group_size = max(int(1.0 / dt), 1)
-        rem = (self.n_triangles - 1) % group_size
+        group_size = max(min(int(1.0 / dt), (self.n_triangles - 1) // 4), 1)
+        remainder = (self.n_triangles - 1) % group_size
         ranges = zip(
             range(1, self.n_triangles, group_size),
             range(1 + group_size, self.n_triangles, group_size),
@@ -159,18 +158,18 @@ class BarycentricGeometryMatrix:
             sys.stdout.flush()
 
         # clean up any remaining triangles
-        if rem != 0:
+        if remainder != 0:
             [
                 self.process_triangle(i)
-                for i in range(self.n_triangles - rem, self.n_triangles)
+                for i in range(self.n_triangles - remainder, self.n_triangles)
             ]
 
         t_elapsed = perf_counter() - t_start
         mins, secs = divmod(t_elapsed, 60)
         hrs, mins = divmod(mins, 60)
-        time_taken = "%d:%02d:%02d" % (hrs, mins, secs)
+        time_taken = f"{int(hrs)}:{int(mins):02d}:{int(secs):02d}"
         sys.stdout.write(
-            f"\r >> Calculating geometry matrix:  [ completed in {time_taken} sec ]           "
+            f"\r >> Calculating geometry matrix:  [ completed in {time_taken} ]           "
         )
         sys.stdout.flush()
         sys.stdout.write("\n")
@@ -215,7 +214,7 @@ class BarycentricGeometryMatrix:
         b = self.q1 - 2 * alpha * beta
         c = self.q0 - alpha**2
 
-        # use the descriminant to check for the existence of the roots
+        # use the discriminant to check for the existence of the roots
         D = b**2 - 4 * a * c
         i = (D >= 0).nonzero()
 
@@ -445,7 +444,7 @@ class GeometryFactors:
         return data_vals, vertex_inds, ray_inds
 
 
-def build_edge_map(triangles):
+def build_edge_map(triangles: ndarray):
     """
     Generates various mappings to and from edges in the mesh.
 
@@ -553,7 +552,9 @@ class Camera:
         return R, z
 
 
-def linear_geometry_matrix(R, ray_origins, ray_ends):
+def linear_geometry_matrix(
+    R: ndarray, ray_origins: ndarray, ray_ends: ndarray
+) -> ndarray:
     """
     Calculates a geometry matrix using 1D linear-interpolation basis functions
     assuming that the emission varies only as a function of major-radius.
@@ -575,12 +576,12 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
     for name, var in [("R", R), ("ray_origins", ray_origins), ("ray_ends", ray_ends)]:
         if type(var) is not ndarray:
             raise TypeError(
-                f"""
-                [ linear_geometry_matrix error ]
-                >> '{name}' argument must have type: 
-                >> {ndarray}
-                >> but instead has type:
-                >> {type(var)}
+                f"""\n
+                \r[ linear_geometry_matrix error ]
+                \r>> '{name}' argument must have type: 
+                \r>> {ndarray}
+                \r>> but instead has type:
+                \r>> {type(var)}
                 """
             )
 
@@ -588,18 +589,18 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
     n_points = R.size
     if R.ndim != 1 or R.size < 3:
         raise ValueError(
-            f"""
-            [ linear_geometry_matrix error ]
-            >> 'R' argument must have one dimension and at least 3 elements,
-            >> but instead has {R.ndim} dimensions and {R.size} elements.
+            f"""\n
+            \r[ linear_geometry_matrix error ]
+            \r>> 'R' argument must have one dimension and at least 3 elements,
+            \r>> but instead has {R.ndim} dimensions and {R.size} elements.
             """
         )
 
     if (R[1:] - R[:-1] <= 0).any():
         raise ValueError(
-            """
-            [ linear_geometry_matrix error ]
-            >> 'R' argument be sorted in ascending order, and contain only unique values.
+            """\n
+            \r[ linear_geometry_matrix error ]
+            \r>> 'R' argument be sorted in ascending order, and contain only unique values.
             """
         )
 
@@ -610,12 +611,12 @@ def linear_geometry_matrix(R, ray_origins, ray_ends):
     )
     if not good_rays:
         raise ValueError(
-            f"""
-            [ linear_geometry_matrix error ]
-            >> 'ray_origins' and 'ray_ends' must both have shape (N, 3)
-            >> where 'N' is the number of rays. Instead, they have shapes
-            >> {ray_origins.shape}, {ray_ends.shape}
-            >> respectively.
+            f"""\n
+            \r[ linear_geometry_matrix error ]
+            \r>> 'ray_origins' and 'ray_ends' must both have shape (N, 3)
+            \r>> where 'N' is the number of rays. Instead, they have shapes
+            \r>> {ray_origins.shape}, {ray_ends.shape}
+            \r>> respectively.
             """
         )
 
