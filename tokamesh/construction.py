@@ -3,7 +3,7 @@ from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate
 from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
 from warnings import warn
 
-from tokamesh.geometry import build_edge_map
+from tokamesh.utilities import build_edge_map
 from tokamesh.triangle import triangulate
 
 

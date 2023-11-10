@@ -4,7 +4,8 @@ from scipy.sparse import csc_matrix
 
 from tokamesh import TriangularMesh
 from tokamesh.construction import equilateral_mesh
-from tokamesh.geometry import BarycentricGeometryMatrix, Camera
+from tokamesh.geometry import BarycentricGeometryMatrix
+from tokamesh.utilities import Camera
 
 # build a simple equilateral mesh
 R, z, triangles = equilateral_mesh(

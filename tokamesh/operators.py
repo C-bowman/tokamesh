@@ -4,7 +4,7 @@ from scipy.sparse import csc_matrix, csr_matrix
 from scipy.special import factorial
 from scipy.linalg import solve
 from itertools import product
-from tokamesh.geometry import build_edge_map
+from tokamesh.utilities import build_edge_map
 
 
 def edge_difference_matrix(
