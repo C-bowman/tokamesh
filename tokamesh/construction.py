@@ -1,5 +1,15 @@
 from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum
-from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate, ndarray
+from numpy import (
+    array,
+    ones,
+    zeros,
+    full,
+    linspace,
+    arange,
+    int64,
+    concatenate,
+    ndarray,
+)
 from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
 from warnings import warn
 
@@ -190,7 +200,6 @@ class Polygon(object):
             return points_min
 
     def diagnostic_plot(self):
-
         xmin = self.x.min()
         xmax = self.x.max()
         ymin = self.y.min()

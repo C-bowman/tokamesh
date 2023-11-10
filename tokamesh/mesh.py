@@ -24,7 +24,6 @@ class TriangularMesh:
     """
 
     def __init__(self, R: ndarray, z: ndarray, triangles: ndarray):
-
         for name, obj in [("R", R), ("z", z), ("triangles", triangles)]:
             if not isinstance(obj, ndarray):
                 raise TypeError(
@@ -76,14 +75,14 @@ class TriangularMesh:
         z1, z2, z3 = [self.z[self.triangle_vertices[:, k]] for k in range(3)]
         self.area = 0.5 * ((z2 - z3) * (R1 - R3) + (R3 - R2) * (z1 - z3))
         self.lam1_coeffs = (
-                0.5
-                * stack([z2 - z3, R3 - R2, R2 * z3 - R3 * z2], axis=1)
-                / self.area[:, None]
+            0.5
+            * stack([z2 - z3, R3 - R2, R2 * z3 - R3 * z2], axis=1)
+            / self.area[:, None]
         )
         self.lam2_coeffs = (
-                0.5
-                * stack([z3 - z1, R1 - R3, R3 * z1 - R1 * z3], axis=1)
-                / self.area[:, None]
+            0.5
+            * stack([z3 - z1, R1 - R3, R3 * z1 - R1 * z3], axis=1)
+            / self.area[:, None]
         )
 
         # Construct a mapping from triangles to edges, and edges to vertices
@@ -123,8 +122,8 @@ class TriangularMesh:
         self.tree_map = {}
         for i, j in product(range(self.R_tree.nodes), range(self.z_tree.nodes)):
             # limits of the rectangle
-            R_lims = self.R_tree.edges[i: i + 2]
-            z_lims = self.z_tree.edges[j: j + 2]
+            R_lims = self.R_tree.edges[i : i + 2]
+            z_lims = self.z_tree.edges[j : j + 2]
             # find all edges which intersect the rectangle
             edge_inds = edge_rectangle_intersection(
                 R_lims, z_lims, self.R_edges, self.z_edges
@@ -286,7 +285,7 @@ class TriangularMesh:
         # which match each unique coordinate
         ranges = counts.cumsum()
         slices = [slice(0, ranges[0])]
-        slices.extend([slice(*ranges[i: i + 2]) for i in range(ranges.size - 1)])
+        slices.extend([slice(*ranges[i : i + 2]) for i in range(ranges.size - 1)])
         return unique_coords, slices, indices
 
     def bary_coords(self, R, z, search_triangles):

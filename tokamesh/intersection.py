@@ -2,10 +2,7 @@ from numpy import full, nan, asanyarray, ndarray
 
 
 def edge_rectangle_intersection(
-        R_lims: tuple,
-        z_lims: tuple,
-        R_edges: ndarray,
-        z_edges: ndarray
+    R_lims: tuple, z_lims: tuple, R_edges: ndarray, z_edges: ndarray
 ) -> ndarray:
     """
     Checks whether a given set of edges intersects a axis-aligned rectangle.

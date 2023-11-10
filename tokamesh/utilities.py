@@ -15,7 +15,7 @@ class BinaryTree:
 
     def __init__(self, layers: int, limits: tuple):
         self.layers = layers
-        self.nodes = 2 ** self.layers
+        self.nodes = 2**self.layers
         self.lims = limits
         self.edges = linspace(limits[0], limits[1], self.nodes + 1)
         self.mids = 0.5 * (self.edges[1:] + self.edges[:-1])

@@ -12,6 +12,7 @@ R, z, triangles = equilateral_mesh(
     R_range=(0.3, 1.5), z_range=(-0.5, 0.5), resolution=0.03
 )
 
+
 # define a test function which sets the emission value in (R,z)
 def emission_func(R, z):
     w = 0.05
