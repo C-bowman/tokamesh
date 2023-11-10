@@ -1,5 +1,5 @@
 from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum
-from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate
+from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate, ndarray
 from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
 from warnings import warn
 
@@ -531,8 +531,8 @@ def remove_duplicate_vertices(R, z, triangles):
 
 
 def mesh_generator(
-    R_boundary,
-    z_boundary,
+    R_boundary: ndarray,
+    z_boundary: ndarray,
     resolution=0.03,
     edge_resolution=None,
     edge_padding=0.75,

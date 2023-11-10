@@ -19,11 +19,11 @@ class TriangularMesh:
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        each of the triangles in the mesh. The array must have shape ``(N, 3)`` where
         ``N`` is the total number of triangles.
     """
 
-    def __init__(self, R, z, triangles):
+    def __init__(self, R: ndarray, z: ndarray, triangles: ndarray):
 
         for name, obj in [("R", R), ("z", z), ("triangles", triangles)]:
             if not isinstance(obj, ndarray):
@@ -137,7 +137,7 @@ class TriangularMesh:
             if triangle_bools.any():
                 self.tree_map[(i, j)] = triangle_bools.nonzero()[0]
 
-    def interpolate(self, R, z, vertex_values):
+    def interpolate(self, R: ndarray, z: ndarray, vertex_values: ndarray) -> ndarray:
         """
         Given the values of a function at each vertex of the mesh, use barycentric
         interpolation to approximate the function at a chosen set of points. Any
@@ -217,7 +217,7 @@ class TriangularMesh:
             interpolated_values.resize(input_shape)
         return interpolated_values
 
-    def find_triangle(self, R, z):
+    def find_triangle(self, R: ndarray, z: ndarray) -> ndarray:
         """
         Find the indices of the triangles which contain a given set of points.
 
@@ -358,7 +358,7 @@ class TriangularMesh:
         image.resize((shape[1], shape[0]))
         return R_axis, z_axis, image.T
 
-    def build_interpolator_matrix(self, R, z):
+    def build_interpolator_matrix(self, R: ndarray, z: ndarray) -> ndarray:
         """
         For a given set of points, construct an 'interpolator' matrix, such
         that its product with a vector of field values at each mesh vertex
@@ -410,7 +410,7 @@ class TriangularMesh:
                 interpolator_matrix[cell_indices[:, None], vertex_inds] = coords
         return interpolator_matrix
 
-    def save(self, filepath):
+    def save(self, filepath: str):
         """
         Save the mesh using the numpy 'npz' format.
 
@@ -420,7 +420,7 @@ class TriangularMesh:
         savez(filepath, R=self.R, z=self.z, triangles=self.triangle_vertices)
 
     @classmethod
-    def load(cls, filepath):
+    def load(cls, filepath: str):
         """
         Load and return a previously saved instance of ``TriangularMesh``.
 

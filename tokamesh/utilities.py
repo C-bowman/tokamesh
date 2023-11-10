@@ -1,7 +1,6 @@
 from collections import defaultdict
-
-from numpy import linspace, full, int64, arange, searchsorted, ndarray, zeros, pi, sqrt, dot, array, cross, identity, \
-    tan
+from numpy import linspace, full, int64, arange, searchsorted, ndarray, zeros
+from numpy import pi, sqrt, dot, array, cross, identity, tan
 
 
 class BinaryTree:
@@ -14,7 +13,7 @@ class BinaryTree:
     :param limits: tuple of the lower and upper bounds of the look-up region.
     """
 
-    def __init__(self, layers, limits):
+    def __init__(self, layers: int, limits: tuple):
         self.layers = layers
         self.nodes = 2 ** self.layers
         self.lims = limits

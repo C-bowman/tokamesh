@@ -114,7 +114,7 @@ class BarycentricGeometryMatrix:
             / self.area[:, None]
         )
 
-    def calculate(self, save_file=None):
+    def calculate(self, save_file=None) -> dict:
         """
         Calculate the geometry matrix.
 
