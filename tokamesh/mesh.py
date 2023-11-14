@@ -471,7 +471,7 @@ class FieldAlignedMesh(TriangularMesh):
         triangles: ndarray,
         index_grid: ndarray,
         psi: ndarray,
-        poloidal_distance: ndarray
+        poloidal_distance: ndarray,
     ):
         super(FieldAlignedMesh, self).__init__(R, z, triangles)
         self.index_grid = index_grid

@@ -29,7 +29,7 @@ def equilateral_mesh(
     z_range: floatpair,
     resolution: float,
     rotation: float = None,
-    pivot: floatpair = (0., 0.)
+    pivot: floatpair = (0.0, 0.0),
 ) -> MeshData:
     """
     Construct a mesh from equilateral triangles which fills a rectangular region.
@@ -339,7 +339,7 @@ def build_central_mesh(
     z_boundary: ndarray,
     resolution: float,
     padding_factor: float = 1.0,
-    rotation: float = None
+    rotation: float = None,
 ) -> MeshData:
     """
     Generate an equilateral mesh which fills the space inside a given boundary,

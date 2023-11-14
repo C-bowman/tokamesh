@@ -343,14 +343,14 @@ class BarycentricGeometryMatrix:
             l2_slice**2 - l1_slice**2
         )
         lam1_int = (
-                self.lam1_coeffs[tri_index, 0] * R_coeff
-                + self.lam1_coeffs[tri_index, 1] * z_coeff
-                + self.lam1_coeffs[tri_index, 2] * dl
+            self.lam1_coeffs[tri_index, 0] * R_coeff
+            + self.lam1_coeffs[tri_index, 1] * z_coeff
+            + self.lam1_coeffs[tri_index, 2] * dl
         )
         lam2_int = (
-                self.lam2_coeffs[tri_index, 0] * R_coeff
-                + self.lam2_coeffs[tri_index, 1] * z_coeff
-                + self.lam2_coeffs[tri_index, 2] * dl
+            self.lam2_coeffs[tri_index, 0] * R_coeff
+            + self.lam2_coeffs[tri_index, 1] * z_coeff
+            + self.lam2_coeffs[tri_index, 2] * dl
         )
         lam3_int = dl - lam1_int - lam2_int
         return lam1_int, lam2_int, lam3_int
