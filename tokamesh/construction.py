@@ -5,7 +5,18 @@ from numpy import int64, ndarray
 from warnings import warn
 
 from tokamesh.utilities import build_edge_map
-from tokamesh.triangle import triangulate
+try:
+    from tokamesh.triangle import triangulate
+except ModuleNotFoundError:
+    warn(
+        """\n
+        \r[ tokamesh warning ]
+        \r>> Failed to import the 'triangulate' C-extension
+        \r>> which is used to interface with the 'triangle' C code.
+        \r>> This may be because tokamesh was not installed via the
+        \r>> setup.py, which builds the C-extension.
+        """
+    )
 
 
 def equilateral_mesh(
