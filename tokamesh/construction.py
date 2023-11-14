@@ -1,16 +1,7 @@
 from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum
-from numpy import (
-    array,
-    ones,
-    zeros,
-    full,
-    linspace,
-    arange,
-    int64,
-    concatenate,
-    ndarray,
-)
+from numpy import array, ones, zeros, full, linspace, arange, concatenate
 from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
+from numpy import int64, ndarray
 from warnings import warn
 
 from tokamesh.utilities import build_edge_map

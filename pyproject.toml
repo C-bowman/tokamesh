@@ -8,11 +8,69 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+
+[tool.setuptools]
+packages = ["tokamesh", "tokamesh.triangle", "tokamesh.tokamaks"]
+zip-safe = false
+license-files = ["LICENSE"]
+include-package-data = false
+
+
 [tool.setuptools_scm]
 write_to = "tokamesh/_version.py"
 git_describe_command = "git describe --dirty --tags --long --first-parent"
+
 
 [tool.cibuildwheel]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*", "cp36-manylinux_aarch64"]
 test-requires = "pytest"
 test-command = "pytest {project}/tests"
+
+
+[project]
+name = "tokamesh"
+dynamic = ["version"]
+authors = [
+    {name = "Chris Bowman", email = "chris.bowman.physics@gmail.com"},
+]
+description = "Python tools for constructing meshes and geometry matrices used in tomography problems"
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+requires-python = ">=3.7"
+dependencies = [
+    "numpy >= 1.20",
+    "scipy >= 1.6.3",
+    "matplotlib >= 3.4.2",
+    'importlib-metadata; python_version < "3.8"',
+]
+
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+
+[project.urls]
+Homepage = "https://github.com/C-bowman/tokamesh"
+Source = "https://github.com/C-bowman/tokamesh"
+Tracker = "https://github.com/C-bowman/tokamesh/issues"
+Documentation = "https://tokamesh.readthedocs.io/en/stable/"
+
+
+[project.optional-dependencies]
+tests = [
+    "pytest >= 3.3.0",
+    "pytest-cov >= 3.0.0",
+    "pyqt5 >= 5.15",
+    "hypothesis >= 6.24",
+    "freezegun >= 1.1.0",
+]
+
+
+[tool.distutils.build_ext]
+inplace = 1
