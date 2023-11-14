@@ -464,13 +464,21 @@ class FieldAlignedMesh(TriangularMesh):
         in each cell of the rectangular field-aligned grid.
     """
 
-    def __init__(self, R, z, triangles, index_grid, psi, poloidal_distance):
+    def __init__(
+        self,
+        R: ndarray,
+        z: ndarray,
+        triangles: ndarray,
+        index_grid: ndarray,
+        psi: ndarray,
+        poloidal_distance: ndarray
+    ):
         super(FieldAlignedMesh, self).__init__(R, z, triangles)
         self.index_grid = index_grid
         self.psi = psi
         self.poloidal_distance = poloidal_distance
 
-    def save(self, filepath):
+    def save(self, filepath: str):
         savez(
             filepath,
             R=self.R,
@@ -482,6 +490,6 @@ class FieldAlignedMesh(TriangularMesh):
         )
 
     @classmethod
-    def load(cls, filepath):
+    def load(cls, filepath: str):
         D = load(filepath)
         return cls(**D)

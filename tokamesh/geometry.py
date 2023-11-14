@@ -247,11 +247,11 @@ class BarycentricGeometryMatrix:
         intersections[invalid_intersections] = nan
         return intersections
 
-    def process_triangle(self, tri):
+    def process_triangle(self, tri_index: int):
         # a hyperbola can at most intersect a triangle six times, so we create space for this.
         intersections = zeros([self.n_rays, 6])
         # loop over each triangle edge and check for intersections
-        edges = self.triangle_edges[tri, :]
+        edges = self.triangle_edges[tri_index, :]
         for j, edge in enumerate(edges):
             R0 = self.R_edge_mid[edge]
             z0 = self.z_edge_mid[edge]
@@ -298,7 +298,7 @@ class BarycentricGeometryMatrix:
                 f"""\n\n
                 \r[ BarycentricGeometryMatrix error ]
                 \r>> One or more rays has an odd number of intersections with
-                \r>> triangle {tri}. This is typically caused by insufficient
+                \r>> triangle {tri_index}. This is typically caused by insufficient
                 \r>> floating-point precision in the intersection calculations.
                 """
             )
@@ -311,11 +311,11 @@ class BarycentricGeometryMatrix:
                 l1=intersections[:, 2 * j],
                 l2=intersections[:, 2 * j + 1],
                 inds=indices,
-                tri=tri,
+                tri_index=tri_index,
             )
 
             # update the vertices with the integrals
-            v1, v2, v3 = self.triangle_vertices[tri, :]
+            v1, v2, v3 = self.triangle_vertices[tri_index, :]
             self.GeomFacs.update_vertex(
                 vertex_ind=v1, ray_indices=indices, integral_vals=L1_int
             )
@@ -326,7 +326,7 @@ class BarycentricGeometryMatrix:
                 vertex_ind=v3, ray_indices=indices, integral_vals=L3_int
             )
 
-    def barycentric_coord_integral(self, l1, l2, inds, tri):
+    def barycentric_coord_integral(self, l1, l2, inds, tri_index: int):
         l1_slice = l1[inds]
         l2_slice = l2[inds]
         dl = l2_slice - l1_slice
@@ -343,14 +343,14 @@ class BarycentricGeometryMatrix:
             l2_slice**2 - l1_slice**2
         )
         lam1_int = (
-            self.lam1_coeffs[tri, 0] * R_coeff
-            + self.lam1_coeffs[tri, 1] * z_coeff
-            + self.lam1_coeffs[tri, 2] * dl
+                self.lam1_coeffs[tri_index, 0] * R_coeff
+                + self.lam1_coeffs[tri_index, 1] * z_coeff
+                + self.lam1_coeffs[tri_index, 2] * dl
         )
         lam2_int = (
-            self.lam2_coeffs[tri, 0] * R_coeff
-            + self.lam2_coeffs[tri, 1] * z_coeff
-            + self.lam2_coeffs[tri, 2] * dl
+                self.lam2_coeffs[tri_index, 0] * R_coeff
+                + self.lam2_coeffs[tri_index, 1] * z_coeff
+                + self.lam2_coeffs[tri_index, 2] * dl
         )
         lam3_int = dl - lam1_int - lam2_int
         return lam1_int, lam2_int, lam3_int
