@@ -5,6 +5,7 @@ from numpy import int64, ndarray
 from warnings import warn
 
 from tokamesh.utilities import build_edge_map
+
 try:
     from tokamesh.triangle import triangulate
 except ModuleNotFoundError:
