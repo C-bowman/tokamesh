@@ -15,6 +15,9 @@ zip-safe = false
 license-files = ["LICENSE"]
 include-package-data = false
 
+[tool.setuptools.packages]
+find = {namespaces = false}
+
 
 [tool.setuptools_scm]
 write_to = "tokamesh/_version.py"
