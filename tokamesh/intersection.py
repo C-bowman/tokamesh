@@ -1,7 +1,9 @@
-from numpy import full, nan, asanyarray
+from numpy import full, nan, asanyarray, ndarray
 
 
-def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
+def edge_rectangle_intersection(
+    R_lims: tuple, z_lims: tuple, R_edges: ndarray, z_edges: ndarray
+) -> ndarray:
     """
     Checks whether a given set of edges intersects a axis-aligned rectangle.
 
@@ -15,12 +17,12 @@ def edge_rectangle_intersection(R_lims, z_lims, R_edges, z_edges):
 
     :param R_edges: \
         A 2D numpy array specifying the major-radius value at the ends of each
-        edge. The array must have shape ``(N,2)`` where ``N`` is the total number
+        edge. The array must have shape ``(N, 2)`` where ``N`` is the total number
         of edges.
 
     :param z_edges: \
         A 2D numpy array specifying the z-height value at the ends of each
-        edge. The array must have shape ``(N,2)`` where ``N`` is the total number
+        edge. The array must have shape ``(N, 2)`` where ``N`` is the total number
         of edges.
 
     :return intersections: \

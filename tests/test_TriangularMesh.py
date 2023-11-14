@@ -1,7 +1,8 @@
 import pytest
 from numpy import arange, array, sin, cos, pi, isclose, ones
 from numpy.random import uniform, seed
-from tokamesh import TriangularMesh, BinaryTree
+from tokamesh import TriangularMesh
+from tokamesh.utilities import BinaryTree
 from tokamesh.construction import equilateral_mesh
 from hypothesis import given, strategies as st
 

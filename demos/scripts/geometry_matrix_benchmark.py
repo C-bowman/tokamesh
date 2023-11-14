@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
-from tokamesh.geometry import Camera, BarycentricGeometryMatrix
+from tokamesh.geometry import BarycentricGeometryMatrix
+from tokamesh.utilities import Camera
 
 """
 This script demonstrates that line-integrals over rays through a field

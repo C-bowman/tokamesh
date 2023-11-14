@@ -6,8 +6,9 @@ from scipy.integrate import quad, simps
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
-from tokamesh.geometry import Camera, BarycentricGeometryMatrix, linear_geometry_matrix
-from tokamesh.geometry import radius_hyperbolic_integral, build_edge_map
+from tokamesh.geometry import BarycentricGeometryMatrix, linear_geometry_matrix
+from tokamesh.geometry import radius_hyperbolic_integral
+from tokamesh.utilities import build_edge_map, Camera
 
 
 def test_BarycentricGeometryMatrix():
@@ -85,7 +86,6 @@ def test_radius_hyperbolic_integral():
 
 
 def test_build_edge_map():
-
     triangles = array(((0, 1, 2), (3, 1, 2), (4, 3, 2)))
 
     triangle_edges, edge_vertices, edge_map = build_edge_map(triangles)

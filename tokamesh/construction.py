@@ -1,15 +1,36 @@
 from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum
-from numpy import array, ones, zeros, full, linspace, arange, int64, concatenate
+from numpy import array, ones, zeros, full, linspace, arange, concatenate
 from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
+from numpy import int64, ndarray
 from warnings import warn
 
-from tokamesh.geometry import build_edge_map
-from tokamesh.triangle import triangulate
+from tokamesh.utilities import build_edge_map
+
+try:
+    from tokamesh.triangle import triangulate
+except ModuleNotFoundError:
+    warn(
+        """\n
+        \r[ tokamesh warning ]
+        \r>> Failed to import the 'triangulate' C-extension
+        \r>> which is used to interface with the 'triangle' C code.
+        \r>> This may be because tokamesh was not installed via the
+        \r>> setup.py, which builds the C-extension.
+        """
+    )
+
+
+MeshData = tuple[ndarray, ndarray, ndarray]
+floatpair = tuple[float, float]
 
 
 def equilateral_mesh(
-    R_range=(0, 1), z_range=(0, 1), resolution=0.1, rotation=None, pivot=(0, 0)
-):
+    R_range: floatpair,
+    z_range: floatpair,
+    resolution: float,
+    rotation: float = None,
+    pivot: floatpair = (0.0, 0.0),
+) -> MeshData:
     """
     Construct a mesh from equilateral triangles which fills a rectangular region.
 
@@ -82,7 +103,9 @@ def rotate(R, z, angle, pivot):
     return d * cos(theta) + pivot[0], d * sin(theta) + pivot[1]
 
 
-def trim_vertices(R, z, triangles, trim_bools):
+def trim_vertices(
+    R: ndarray, z: ndarray, triangles: ndarray, trim_bools: ndarray
+) -> MeshData:
     """
     Removes chosen vertices (and any triangles containing those vertices) from a mesh.
 
@@ -117,7 +140,7 @@ def trim_vertices(R, z, triangles, trim_bools):
     return R[vert_inds], z[vert_inds], trim_triangles
 
 
-class Polygon(object):
+class Polygon:
     """
     Class for evaluating whether a given point is inside a polygon,
     or the distance between it and the nearest point on the polygon.
@@ -190,7 +213,6 @@ class Polygon(object):
             return points_min
 
     def diagnostic_plot(self):
-
         xmin = self.x.min()
         xmax = self.x.max()
         ymin = self.y.min()
@@ -232,13 +254,13 @@ class Polygon(object):
         plt.show()
 
 
-def find_boundaries(triangles):
+def find_boundaries(triangles: ndarray) -> list[ndarray]:
     """
     Find all the boundaries of a given mesh.
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
-        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        each of the triangles in the mesh. The array must have shape ``(N, 3)`` where
         ``N`` is the total number of triangles.
 
     :return: \
@@ -281,12 +303,12 @@ def find_boundaries(triangles):
     _, edges_per_vertex = unique(boundary_edges, return_counts=True)
     if edges_per_vertex.max() > 2:
         warn(
-            """
+            """\n
             [ find_boundaries warning ]
             >> The given mesh contains at least two sub-meshes which
             >> are connected by only one vertex. Currently, it is not
-            >> guaranteed that this function will draw separate boundaries
-            >> for each sub-mesh - this will be addressed in future update.
+            >> guaranteed that find_boundaries will draw separate
+            >> boundaries for each sub-mesh.
             """
         )
 
@@ -313,8 +335,12 @@ def find_boundaries(triangles):
 
 
 def build_central_mesh(
-    R_boundary, z_boundary, resolution, padding_factor=1.0, rotation=None
-):
+    R_boundary: ndarray,
+    z_boundary: ndarray,
+    resolution: float,
+    padding_factor: float = 1.0,
+    rotation: float = None,
+) -> MeshData:
     """
     Generate an equilateral mesh which fills the space inside a given boundary,
     up to a chosen distance to the boundary edge.
@@ -372,7 +398,9 @@ def build_central_mesh(
     return trim_vertices(R, z, triangles, bools)
 
 
-def refine_mesh(R, z, triangles, refinement_bools):
+def refine_mesh(
+    R: ndarray, z: ndarray, triangles: ndarray, refinement_bools: ndarray
+) -> MeshData:
     """
     Refine a mesh by partitioning specified triangles into 4 sub-triangles.
     Triangles sharing one or more edges with those being refined will also
@@ -500,7 +528,7 @@ def refine_mesh(R, z, triangles, refinement_bools):
     return new_R, new_z, new_triangles
 
 
-def remove_duplicate_vertices(R, z, triangles):
+def remove_duplicate_vertices(R: ndarray, z: ndarray, triangles: ndarray) -> MeshData:
     R2 = R.copy()
     z2 = z.copy()
     # first, find duplicate vertices (including those which differ only by numerical error)
@@ -531,14 +559,14 @@ def remove_duplicate_vertices(R, z, triangles):
 
 
 def mesh_generator(
-    R_boundary,
-    z_boundary,
+    R_boundary: ndarray,
+    z_boundary: ndarray,
     resolution=0.03,
     edge_resolution=None,
     edge_padding=0.75,
     edge_max_area=1.1,
     rotation=None,
-):
+) -> MeshData:
     """
     Generate a triangular mesh which fills the space inside a given boundary using a 2-stage
     process. First, a mesh of equilateral triangles is created which fills the space up to a

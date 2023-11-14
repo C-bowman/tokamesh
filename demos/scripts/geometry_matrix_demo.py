@@ -4,12 +4,14 @@ from scipy.sparse import csc_matrix
 
 from tokamesh import TriangularMesh
 from tokamesh.construction import equilateral_mesh
-from tokamesh.geometry import BarycentricGeometryMatrix, Camera
+from tokamesh.geometry import BarycentricGeometryMatrix
+from tokamesh.utilities import Camera
 
 # build a simple equilateral mesh
 R, z, triangles = equilateral_mesh(
     R_range=(0.3, 1.5), z_range=(-0.5, 0.5), resolution=0.03
 )
+
 
 # define a test function which sets the emission value in (R,z)
 def emission_func(R, z):
