@@ -23,7 +23,7 @@ git_describe_command = "git describe --dirty --tags --long --first-parent"
 
 [tool.cibuildwheel]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*", "cp36-manylinux_aarch64"]
-test-requires = "pytest"
+test-extras = ["tests"]
 test-command = "pytest {project}/tests"
 
 
