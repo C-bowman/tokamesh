@@ -31,6 +31,7 @@ or download the files from `PyPI <https://pypi.org/project/tokamesh/>`_ directly
 
    construction
    construction_refinement
+   operators
 
 .. toctree::
    :maxdepth: 1
