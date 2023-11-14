@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - '**.py'
+      - '**.toml'
   pull_request:
     paths:
       - '**.py'
+      - '**.toml'
 
 jobs:
   pytest:
