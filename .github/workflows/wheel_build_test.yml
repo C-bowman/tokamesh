@@ -1,9 +1,6 @@
 name: Build Wheels Test
 
-on:
-  pull_request:
-    types:
-      - opened
+on: workflow_dispatch
 
 jobs:
   build_wheels:
