@@ -1,0 +1,40 @@
+name: Build Wheels Test
+
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  build_wheels:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-10.15]
+    runs-on: ${{ matrix.os }}
+    name: Build wheels on ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Prepare
+        shell: bash
+        run: |
+          pip install .[tests]
+
+      - name: Build
+        uses: pypa/cibuildwheel@v2.16.2
+        env:
+          CIBW_ARCHS_LINUX: auto aarch64
+          CIBW_ARCHS_MACOS: x86_64 universal2 arm64
