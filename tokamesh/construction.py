@@ -1,23 +1,10 @@
-from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum
-from numpy import array, ones, zeros, full, linspace, arange, concatenate
+from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum, cumsum
+from numpy import array, ones, zeros, full, linspace, arange, concatenate, vstack
 from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
 from numpy import int64, ndarray
 from warnings import warn
 
 from tokamesh.utilities import build_edge_map
-
-try:
-    from tokamesh.triangle import triangulate
-except ModuleNotFoundError:
-    warn(
-        """\n
-        \r[ tokamesh warning ]
-        \r>> Failed to import the 'triangulate' C-extension
-        \r>> which is used to interface with the 'triangle' C code.
-        \r>> This may be because tokamesh was not installed via the
-        \r>> setup.py, which builds the C-extension.
-        """
-    )
 
 
 MeshData = tuple[ndarray, ndarray, ndarray]
@@ -561,11 +548,11 @@ def remove_duplicate_vertices(R: ndarray, z: ndarray, triangles: ndarray) -> Mes
 def mesh_generator(
     R_boundary: ndarray,
     z_boundary: ndarray,
-    resolution=0.03,
-    edge_resolution=None,
-    edge_padding=0.75,
-    edge_max_area=1.1,
-    rotation=None,
+    resolution: float,
+    edge_resolution: float = None,
+    edge_padding: float = 0.75,
+    edge_max_area: float = 1.1,
+    rotation: float = None,
 ) -> MeshData:
     """
     Generate a triangular mesh which fills the space inside a given boundary using a 2-stage
@@ -584,11 +571,11 @@ def mesh_generator(
         The side-length of triangles in the central equilateral mesh.
 
     :param edge_resolution: \
-        Sets the target area of triangles in the irregular edge mesh, which fills the space between
-        the central equilateral mesh and the boundary. The `Triangle` C-code, which is used to
-        generate the irregular mesh, will attempt to construct triangles with areas equal to that
-        of an equilateral triangle with side length ``edge_resolution``. If not specified, the value
-        passed as the ``resolution`` argument is used instead.
+        Sets the target area of triangles in the irregular edge mesh, which fills the
+        space between the central equilateral mesh and the boundary. The `Triangle` C-code,
+        which is used to generate the irregular mesh, will attempt to construct triangles
+        with areas equal to that of an equilateral triangle with side length ``edge_resolution``.
+        If not specified, the value passed as the ``resolution`` argument is used instead.
 
     :param edge_padding: \
         A multiplicative factor which defines the minimum allowed distance between a
@@ -624,35 +611,76 @@ def mesh_generator(
     # now construct the boundary for the central mesh
     boundaries = find_boundaries(central_triangles)
     # if there are multiple boundaries, sort them by length
+    # fixme - if we have more than one boundary, don't we need to trim vertices?
     if len(boundaries) > 1:
         boundaries = sorted(boundaries, key=lambda x: len(x))
     central_boundary = boundaries[-1]
-    central_boundary = concatenate([central_boundary, atleast_1d(central_boundary[0])])
 
     # now we have the boundary, we can build the edge mesh using triangle.
     # prepare triangle inputs:
-    if edge_resolution is None:
-        edge_resolution = resolution
+    edge_resolution = resolution if edge_resolution is None else edge_resolution
     eq_area = (edge_resolution**2) * 0.25 * sqrt(3)
-    area_multiplier = edge_max_area
 
-    outer = (R_boundary, z_boundary)
-    inner = (central_R[central_boundary], central_z[central_boundary])
-    voids = [[inner[0].mean()], [inner[1].mean()]]
+    outer = array([R_boundary[:-1], z_boundary[:-1]]).T
+    inner = array([central_R[central_boundary[:-1]], central_z[central_boundary[:-1]]]).T
 
-    edges, edge_triangles = triangulate(
+    # fixme - for non-convex boundaries taking the mean doesn't always work
+    voids = [[inner[:, 0].mean(), inner[:, 1].mean()]]
+
+    edge_R, edge_z, edge_triangles = build_edge_mesh(
         outer_boundary=outer,
         inner_boundary=inner,
         void_markers=voids,
-        max_area=eq_area * area_multiplier,
+        max_area=eq_area * edge_max_area,
     )
 
     # combine the central and edge meshes
-    R = concatenate([central_R, edges[:, 0]])
-    z = concatenate([central_z, edges[:, 1]])
+    R = concatenate([central_R, edge_R])
+    z = concatenate([central_z, edge_z])
     triangles = concatenate(
         [central_triangles, edge_triangles + central_R.size], axis=0
     )
     R, z, triangles = remove_duplicate_vertices(R, z, triangles)
 
+    # fixme - we should have quality checks here to make sure Triangle didn't split
+    # any of the inner boundary edges
     return R, z, triangles
+
+
+def build_edge_mesh(
+    inner_boundary: ndarray,
+    outer_boundary: ndarray,
+    void_markers: ndarray,
+    max_area: float,
+) -> MeshData:
+
+    for b in [inner_boundary, outer_boundary]:
+        assert b.ndim == 2 and b.shape[1] == 2
+        assert b[0, 0] != b[-1, 0] or b[0, 1] != b[-1, 1]
+
+    inner_segments = build_segments(inner_boundary.shape[0])
+    outer_segments = build_segments(outer_boundary.shape[0])
+
+    triangle_inputs = dict(
+        vertices=vstack([outer_boundary, inner_boundary]),
+        segments=connect_segments([outer_segments, inner_segments]),
+        holes=void_markers
+    )
+
+    options = f"QPBzpqa{max_area:.12f}"
+    from triangle import triangulate
+    triangle_outputs = triangulate(triangle_inputs, options)
+    triangles = triangle_outputs["triangles"]
+    vertices = triangle_outputs["vertices"]
+    return vertices[:, 0], vertices[:, 1], triangles
+
+
+def build_segments(n: int) -> ndarray:
+    inds = arange(n)
+    return vstack([inds, inds + 1]).T % n
+
+
+def connect_segments(segments: list[ndarray]) -> ndarray:
+    lengths = [s.shape[0] for s in segments]
+    offsets = cumsum([0, *lengths[:-1]], dtype=int)
+    return vstack([s + d for s, d in zip(segments, offsets)])
