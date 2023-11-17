@@ -1,79 +1,28 @@
-name: Build Wheels
+name: Upload Python Package
 
 on:
   release:
     types: [published]
 
 jobs:
-  build_wheels:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04, windows-2022, macos-10.15]
-    runs-on: ${{ matrix.os }}
-    name: Build wheels on ${{ matrix.os }}
-
+  deploy:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Set up Python 3.11
+      - uses: actions/checkout@v4
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
-
-      - name: Prepare
-        shell: bash
+          python-version: '3.x'
+      - name: Install dependencies
         run: |
-          pip install .[tests]
-
-      - name: Build
-        uses: pypa/cibuildwheel@v2.16.2
-        env:
-          CIBW_ARCHS_LINUX: auto aarch64
-          CIBW_ARCHS_MACOS: x86_64 universal2 arm64
-
-      - name: Upload Wheels
-        uses: actions/upload-artifact@v3
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build package
+        run: python -m build --sdist --wheel
+      - name: Check build
+        run: twine check dist/*
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          name: dist
-          path: wheelhouse
-
-  make_sdist:
-    name: Make SDist
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Build SDist
-      run: pipx run build --sdist
-
-    - uses: actions/upload-artifact@v3
-      with:
-        path: dist/*.tar.gz
-
-  deploy:
-    name: Deploy
-    environment: release
-    needs: [build_wheels, make_sdist]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Download distributions
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
-        path: dist
-
-    - name: Publish package
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}
+          user: __token__
+          password: ${{ secrets.PYPI_DEPLOYMENT_TOKEN }}
