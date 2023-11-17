@@ -622,7 +622,9 @@ def mesh_generator(
     eq_area = (edge_resolution**2) * 0.25 * sqrt(3)
 
     outer = array([R_boundary[:-1], z_boundary[:-1]]).T
-    inner = array([central_R[central_boundary[:-1]], central_z[central_boundary[:-1]]]).T
+    inner = array(
+        [central_R[central_boundary[:-1]], central_z[central_boundary[:-1]]]
+    ).T
 
     # fixme - for non-convex boundaries taking the mean doesn't always work
     voids = [[inner[:, 0].mean(), inner[:, 1].mean()]]
@@ -653,7 +655,6 @@ def build_edge_mesh(
     void_markers: ndarray,
     max_area: float,
 ) -> MeshData:
-
     for b in [inner_boundary, outer_boundary]:
         assert b.ndim == 2 and b.shape[1] == 2
         assert b[0, 0] != b[-1, 0] or b[0, 1] != b[-1, 1]
@@ -664,11 +665,12 @@ def build_edge_mesh(
     triangle_inputs = dict(
         vertices=vstack([outer_boundary, inner_boundary]),
         segments=connect_segments([outer_segments, inner_segments]),
-        holes=void_markers
+        holes=void_markers,
     )
 
     options = f"QPBzpqa{max_area:.12f}"
     from triangle import triangulate
+
     triangle_outputs = triangulate(triangle_inputs, options)
     triangles = triangle_outputs["triangles"]
     vertices = triangle_outputs["vertices"]
