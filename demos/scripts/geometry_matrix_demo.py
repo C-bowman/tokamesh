@@ -50,7 +50,7 @@ G = csc_matrix((entry_values, (row_values, col_values)), shape=shape)
 
 # predict the pixel brightness by taking the product of the geometry
 # matrix with the vector of emission values at each vertex
-pixel_brightness = G.dot(emission)
+pixel_brightness = G @ emission
 # re-shape the pixel brightness into an image
 brightness_image = pixel_brightness.reshape([pixels, pixels])
 

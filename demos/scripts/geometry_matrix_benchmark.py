@@ -16,7 +16,7 @@ by geometry matrices produced by the BarycentricGeometryMatrix class.
 """
 
 # build a basic mesh out of equilateral triangles
-R, z, triangles = equilateral_mesh(resolution=0.01, R_range=[0, 0.2], z_range=[0, 0.2])
+R, z, triangles = equilateral_mesh(resolution=0.01, R_range=(0, 0.2), z_range=(0, 0.2))
 mesh = TriangularMesh(R, z, triangles)
 
 # generate a random test field using a gaussian process
@@ -30,9 +30,9 @@ field -= field.min()
 R_axis, z_axis, field_image = mesh.get_field_image(field, shape=(200, 150))
 
 # plot the test field
-from matplotlib.cm import get_cmap
+from matplotlib import colormaps
 
-cmap = get_cmap("viridis")
+cmap = colormaps["viridis"]
 
 fig = plt.figure(figsize=(7, 7))
 ax1 = fig.add_subplot(111)
@@ -67,7 +67,7 @@ shape = matrix_data["shape"]
 G = csc_matrix((entry_values, (row_values, col_values)), shape=shape)
 
 # get the geometry matrix prediction of the line-integrals
-matrix_integrals = G.dot(field)
+matrix_integrals = G @ field
 
 # manually calculate the line integrals for comparison
 L = linspace(0, 0.5, 3000)  # build a distance axis for the integrals
