@@ -31,6 +31,7 @@ R_axis, z_axis, field_image = mesh.get_field_image(field, shape=(200, 150))
 
 # plot the test field
 from matplotlib import colormaps
+
 cmap = colormaps["viridis"]
 
 fig = plt.figure(figsize=(7, 7))
