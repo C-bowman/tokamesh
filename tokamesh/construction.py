@@ -608,13 +608,33 @@ def mesh_generator(
         rotation=rotation,
     )
 
-    # now construct the boundary for the central mesh
+    # find all boundaries on the central mesh
     boundaries = find_boundaries(central_triangles)
-    # if there are multiple boundaries, sort them by length
-    # fixme - if we have more than one boundary, don't we need to trim vertices?
-    if len(boundaries) > 1:
-        boundaries = sorted(boundaries, key=lambda x: len(x))
+    # if there is more than one boundary, then there are multiple sub-meshes
+    # pick the largest boundary, and discard any vertices which are outside of it
+    boundaries = sorted(boundaries, key=lambda x: len(x))
     central_boundary = boundaries[-1]
+    if len(boundaries) > 1:
+        # turn the boundary into a polygon to test if points are inside
+        poly = Polygon(x=central_R[central_boundary], y=central_z[central_boundary])
+
+        max_dist = resolution * 1e-2
+        trim_vertex = array(
+            [
+                not poly.is_inside(v) and poly.distance(v) > max_dist
+                for v in zip(central_R, central_z)
+            ]
+        )
+        # remove any vertices which are outside the boundary
+        central_R, central_z, central_triangles = trim_vertices(
+            central_R, central_z, central_triangles, trim_vertex
+        )
+
+        # re-calculate the boundary for the trimmed mesh
+        boundaries = find_boundaries(central_triangles)
+        # verify that there is now only one boundary
+        assert len(boundaries) == 1
+        central_boundary = boundaries[-1]
 
     # now we have the boundary, we can build the edge mesh using triangle.
     # prepare triangle inputs:
@@ -644,8 +664,8 @@ def mesh_generator(
     )
     R, z, triangles = remove_duplicate_vertices(R, z, triangles)
 
-    # fixme - we should have quality checks here to make sure Triangle didn't split
-    # any of the inner boundary edges
+    # check that the final mesh has only one boundary
+    assert len(find_boundaries(triangles)) == 1
     return R, z, triangles
 
 
