@@ -14,7 +14,7 @@ from tokamesh.utilities import build_edge_map, Camera
 def test_BarycentricGeometryMatrix():
     # build a basic mesh out of equilateral triangles
     R, z, triangles = equilateral_mesh(
-        resolution=0.01, R_range=[0, 0.2], z_range=[0, 0.2]
+        resolution=0.01, R_range=[0, 0.2], z_range=[-0.2, 0.2]
     )
     mesh = TriangularMesh(R, z, triangles)
 
@@ -51,10 +51,10 @@ def test_BarycentricGeometryMatrix():
     G = csc_matrix((entry_values, (row_values, col_values)), shape=shape)
 
     # get the geometry matrix prediction of the line-integrals
-    matrix_integrals = G.dot(field)
+    matrix_integrals = G @ field
 
     # manually calculate the line integrals for comparison
-    L = linspace(0, 0.5, 3000)  # build a distance axis for the integrals
+    L = linspace(0, 1.0, 3000)  # build a distance axis for the integrals
     # get the position of each ray at each distance
     R_projection, z_projection = cam.project_rays(L)
     # directly integrate along each ray
