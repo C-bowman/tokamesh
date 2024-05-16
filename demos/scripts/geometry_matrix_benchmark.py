@@ -29,6 +29,7 @@ field -= field.min()
 
 # plot the test field
 from matplotlib import colormaps
+
 cmap = colormaps["viridis"]
 
 fig = plt.figure(figsize=(7, 7))
