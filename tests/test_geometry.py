@@ -163,7 +163,7 @@ def test_linear_geometry_matrix():
 
     # Use geometry matrix to calculate the analytic integral result
     G = linear_geometry_matrix(R=R, ray_origins=origins, ray_ends=ends)
-    analytic_integral = G.dot(emission)
+    analytic_integral = G @ emission
 
     # Directly integrate over the basis functions to get the numerical integral
     basis = [LinearBF(R[0] - 1e-5, R[0], R[1])]
@@ -176,7 +176,7 @@ def test_linear_geometry_matrix():
         y_ray = rays[i, 1] * L + origins[i, 1]
         R = sqrt(x_ray**2 + y_ray**2)
         F = sum(w * lbf(R) for lbf, w in zip(basis, emission))
-        numerical_integral[i] = simps(F, x=L)
+        numerical_integral[i] = simpson(F, x=L)
 
     # check that analytic integral agrees with numerical one
     assert abs(analytic_integral - numerical_integral).max() < 1e-5
