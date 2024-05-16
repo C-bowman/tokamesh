@@ -1,8 +1,8 @@
 from numpy import sqrt, sinc, sin, cos, pi, exp
 from numpy import array, linspace, zeros, array_equal, piecewise
 from scipy.sparse import csc_matrix
-from numpy.random import multivariate_normal
-from scipy.integrate import quad, simps
+from numpy.random import default_rng
+from scipy.integrate import quad, simpson
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
@@ -22,7 +22,9 @@ def test_BarycentricGeometryMatrix():
     distance = sqrt((R[:, None] - R[None, :]) ** 2 + (z[:, None] - z[None, :]) ** 2)
     scale = 0.04
     covariance = sinc(distance / scale) ** 2
-    field = multivariate_normal(zeros(R.size), covariance)
+
+    rng = default_rng(123)
+    field = rng.multivariate_normal(zeros(R.size), covariance)
     field -= field.min()
 
     # generate a synthetic camera to image the field
@@ -63,8 +65,7 @@ def test_BarycentricGeometryMatrix():
         samples = mesh.interpolate(
             R_projection[:, i], z_projection[:, i], vertex_values=field
         )
-        direct_integrals[i] = simps(samples, x=L)
-
+        direct_integrals[i] = simpson(samples, x=L)
     assert (abs(direct_integrals - matrix_integrals) < 1e-3).all()
 
 
