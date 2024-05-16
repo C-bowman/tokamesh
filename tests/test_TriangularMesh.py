@@ -1,9 +1,10 @@
 import pytest
-from numpy import arange, array, sin, cos, pi, isclose, ones
-from numpy.random import uniform, seed
+from numpy import arange, array, sin, cos, pi, isclose, ones, sqrt, sinc, zeros
+from numpy.random import uniform, seed, multivariate_normal
 from tokamesh import TriangularMesh
 from tokamesh.utilities import BinaryTree
 from tokamesh.construction import equilateral_mesh
+import matplotlib.pyplot as plt
 from hypothesis import given, strategies as st
 
 
@@ -142,3 +143,21 @@ def test_find_triangle(mesh):
 def test_find_triangle_inconsistent_shapes(mesh):
     with pytest.raises(ValueError):
         mesh.find_triangle(ones([2, 1]), ones([2, 3]))
+
+
+def test_plot_field(mesh):
+    # generate a random test field using a gaussian process
+    distance = sqrt(
+        (mesh.R[:, None] - mesh.R[None, :]) ** 2 +
+        (mesh.z[:, None] - mesh.z[None, :]) ** 2
+    )
+    scale = 0.04
+    covariance = sinc(distance / scale) ** 2
+    field = multivariate_normal(zeros(mesh.R.size), covariance)
+    field -= field.min()
+
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(1, 1, 1)
+    mesh.plot_field(ax=ax, vertex_values=field, colormap="Blues", mesh_color="black", mesh_thickness=0.4)
+    plt.close()
+

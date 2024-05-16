@@ -323,7 +323,54 @@ class TriangularMesh:
             kwargs["label"] = None
         ax.plot(self.R_edges[1:, :].T, self.z_edges[1:, :].T, **kwargs)
 
-    def get_field_image(self, vertex_values, shape=(150, 150), pad_fraction=0.01):
+    def plot_field(
+        self,
+        ax,
+        vertex_values: ndarray,
+        color_levels=64,
+        colormap="viridis",
+        mesh_color=None,
+        mesh_thickness=0.5,
+    ):
+        """
+        Generates a filled color contour plot of a given field specified by its value
+        at each mesh vertex.
+
+        :param ax: \
+            A ``matplotlib.pyplot`` axis object on which the field will be plotted by
+            calling the ``tricontourf`` method of the object.
+
+        :param vertex_values: \
+            The value of the field being plotted at each vertex of the mesh as a 1D numpy array.
+
+        :param color_levels: \
+            The number of color levels used to plot the field contours.
+
+        :param colormap: \
+            The name (or an instance) of a ``matplotlib`` colormap which will be used
+            to color the field contours.
+
+        :param mesh_color: \
+            The name of a ``matplotlib.pyplot`` color which will be used to draw
+            the mesh over the field. If unspecified, the mesh will not be drawn.
+
+        :param mesh_thickness: \
+            The line-width used to draw the mesh.
+        """
+        ax.tricontourf(
+            self.R,
+            self.z,
+            self.triangle_vertices,
+            vertex_values,
+            color_levels,
+            cmap=colormap,
+        )
+        if mesh_color is not None:
+            self.draw(ax, color=mesh_color, lw=mesh_thickness)
+
+    def get_field_image(
+        self, vertex_values: ndarray, shape=(150, 150), pad_fraction=0.01
+    ):
         """
         Given the value of a field at each mesh vertex, use interpolation to generate
         an image of the field across the whole mesh.
