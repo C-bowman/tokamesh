@@ -1,8 +1,8 @@
 from numpy import sqrt, sinc, sin, cos, pi, exp
 from numpy import array, linspace, zeros, array_equal, piecewise
 from scipy.sparse import csc_matrix
-from numpy.random import multivariate_normal
-from scipy.integrate import quad, simps
+from numpy.random import default_rng
+from scipy.integrate import quad, simpson
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
@@ -14,7 +14,7 @@ from tokamesh.utilities import build_edge_map, Camera
 def test_BarycentricGeometryMatrix():
     # build a basic mesh out of equilateral triangles
     R, z, triangles = equilateral_mesh(
-        resolution=0.01, R_range=[0, 0.2], z_range=[0, 0.2]
+        resolution=0.01, R_range=[0, 0.2], z_range=[-0.2, 0.2]
     )
     mesh = TriangularMesh(R, z, triangles)
 
@@ -22,7 +22,9 @@ def test_BarycentricGeometryMatrix():
     distance = sqrt((R[:, None] - R[None, :]) ** 2 + (z[:, None] - z[None, :]) ** 2)
     scale = 0.04
     covariance = sinc(distance / scale) ** 2
-    field = multivariate_normal(zeros(R.size), covariance)
+
+    rng = default_rng(123)
+    field = rng.multivariate_normal(zeros(R.size), covariance)
     field -= field.min()
 
     # generate a synthetic camera to image the field
@@ -51,10 +53,10 @@ def test_BarycentricGeometryMatrix():
     G = csc_matrix((entry_values, (row_values, col_values)), shape=shape)
 
     # get the geometry matrix prediction of the line-integrals
-    matrix_integrals = G.dot(field)
+    matrix_integrals = G @ field
 
     # manually calculate the line integrals for comparison
-    L = linspace(0, 0.5, 3000)  # build a distance axis for the integrals
+    L = linspace(0, 1.0, 3000)  # build a distance axis for the integrals
     # get the position of each ray at each distance
     R_projection, z_projection = cam.project_rays(L)
     # directly integrate along each ray
@@ -63,8 +65,7 @@ def test_BarycentricGeometryMatrix():
         samples = mesh.interpolate(
             R_projection[:, i], z_projection[:, i], vertex_values=field
         )
-        direct_integrals[i] = simps(samples, x=L)
-
+        direct_integrals[i] = simpson(samples, x=L)
     assert (abs(direct_integrals - matrix_integrals) < 1e-3).all()
 
 
@@ -162,7 +163,7 @@ def test_linear_geometry_matrix():
 
     # Use geometry matrix to calculate the analytic integral result
     G = linear_geometry_matrix(R=R, ray_origins=origins, ray_ends=ends)
-    analytic_integral = G.dot(emission)
+    analytic_integral = G @ emission
 
     # Directly integrate over the basis functions to get the numerical integral
     basis = [LinearBF(R[0] - 1e-5, R[0], R[1])]
@@ -175,7 +176,7 @@ def test_linear_geometry_matrix():
         y_ray = rays[i, 1] * L + origins[i, 1]
         R = sqrt(x_ray**2 + y_ray**2)
         F = sum(w * lbf(R) for lbf, w in zip(basis, emission))
-        numerical_integral[i] = simps(F, x=L)
+        numerical_integral[i] = simpson(F, x=L)
 
     # check that analytic integral agrees with numerical one
     assert abs(analytic_integral - numerical_integral).max() < 1e-5

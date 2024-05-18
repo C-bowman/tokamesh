@@ -114,6 +114,13 @@ class BarycentricGeometryMatrix:
             / self.area[:, None]
         )
 
+        # for edges in the mesh which are very close to horizontal, the regular
+        # intersection calculation becomes inaccurate. Here we set a lower-limit
+        # on the allowed size of the z-component of the edge unit vector. Edges
+        # with a z-component below this limit will instead use a different
+        # intersection calculation for horizontal edges.
+        self.min_z_component = 1e-12
+
     def calculate(self, save_file=None) -> dict:
         """
         Calculate the geometry matrix.
@@ -257,7 +264,9 @@ class BarycentricGeometryMatrix:
             z0 = self.z_edge_mid[edge]
             uR, uz = self.edge_drn[edge, :]
             w = self.edge_lengths[edge]
-            if uz == 0.0:  # if the edge is horizontal, a simplified method can be used
+
+            # if the edge is horizontal, a simplified method can be used
+            if abs(uz) < self.min_z_component:
                 intersections[:, 2 * j] = self.horizontal_hyperbola_intersections(
                     R0, z0, uR, uz, w
                 )
@@ -286,11 +295,9 @@ class BarycentricGeometryMatrix:
 
         # re-sort the intersections
         intersections.sort(axis=1)
-
         # check where valid intersections exist, and count how many there are per ray
         valid_intersections = isfinite(intersections)
         intersection_count = valid_intersections.sum(axis=1)
-
         # At this point, each ray should have an even number of intersections, if any
         # have an odd number then something has gone wrong, so raise an error.
         if (intersection_count % 2 == 1).any():

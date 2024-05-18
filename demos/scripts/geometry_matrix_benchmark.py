@@ -26,8 +26,6 @@ covariance = sinc(distance / scale) ** 2
 field = multivariate_normal(zeros(R.size), covariance)
 field -= field.min()
 
-# Generate an image of the field on the mesh
-R_axis, z_axis, field_image = mesh.get_field_image(field, shape=(200, 150))
 
 # plot the test field
 from matplotlib import colormaps
@@ -35,10 +33,9 @@ from matplotlib import colormaps
 cmap = colormaps["viridis"]
 
 fig = plt.figure(figsize=(7, 7))
-ax1 = fig.add_subplot(111)
-ax1.contourf(R_axis, z_axis, field_image.T, 30)
+ax1 = fig.add_subplot(1, 1, 1)
+mesh.plot_field(ax1, field, mesh_color="white", colormap=cmap)
 ax1.set_facecolor(cmap(0.0))
-mesh.draw(ax1, lw=0.25, color="white")
 ax1.axis("equal")
 ax1.set_title("Gaussian random field on the mesh")
 plt.tight_layout()
