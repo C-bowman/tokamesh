@@ -260,6 +260,18 @@ def find_boundaries(triangles: ndarray) -> list[ndarray]:
     boundary_edges_indices = (counts == 1).nonzero()[0]
     boundary_edges = edge_vertices[boundary_edges_indices, :]
 
+    _, edges_per_vertex = unique(boundary_edges, return_counts=True)
+    if edges_per_vertex.max() > 2:
+        warn(
+            """\n
+            \r[ find_boundaries warning ]
+            \r>> The given mesh contains at least two sub-meshes which
+            \r>> are connected by only one vertex. Currently, it is not
+            \r>> guaranteed that find_boundaries will draw separate
+            \r>> boundaries for each sub-mesh.
+            """
+        )
+
     # now create a map between an edge, and the other edges to which it's connected
     boundary_connections = {}
     for i in range(boundary_edges.shape[0]):
@@ -286,18 +298,6 @@ def find_boundaries(triangles: ndarray) -> list[ndarray]:
             else:
                 break
         boundaries.append(boundary_edges_indices[current_boundary])
-
-    _, edges_per_vertex = unique(boundary_edges, return_counts=True)
-    if edges_per_vertex.max() > 2:
-        warn(
-            """\n
-            [ find_boundaries warning ]
-            >> The given mesh contains at least two sub-meshes which
-            >> are connected by only one vertex. Currently, it is not
-            >> guaranteed that find_boundaries will draw separate
-            >> boundaries for each sub-mesh.
-            """
-        )
 
     # Now we need to convert the boundaries from edge indices to vertex indices
     vertex_boundaries = []
@@ -553,6 +553,7 @@ def mesh_generator(
     edge_padding: float = 0.75,
     edge_max_area: float = 1.1,
     rotation: float = None,
+    central_mesh: MeshData = None
 ) -> MeshData:
     """
     Generate a triangular mesh which fills the space inside a given boundary using a 2-stage
@@ -592,6 +593,12 @@ def mesh_generator(
         Angle (in radians) by which the orientations of triangles in the central
         equilateral mesh are rotated, relative to their default orientation.
 
+    :param central_mesh: \
+        Allows the central mesh to be specified directly rather than being generated
+        automatically. The central mesh data is specified as a tuple of numpy arrays
+        specifying the major radius of the vertices, the z-height of the vertices and
+        the indices of the triangles respectively.
+
     :return: \
         A tuple containing ``R_vert``, ``z_vert`` and ``triangles``.
         ``R_vert`` is the major-radius of the vertices as a 1D array. ``z_vert`` the is
@@ -600,13 +607,16 @@ def mesh_generator(
         in the mesh, where ``N`` is the total number of triangles.
     """
     # build the central mesh
-    central_R, central_z, central_triangles = build_central_mesh(
-        R_boundary=R_boundary,
-        z_boundary=z_boundary,
-        resolution=resolution,
-        padding_factor=edge_padding,
-        rotation=rotation,
-    )
+    if central_mesh is None:
+        central_R, central_z, central_triangles = build_central_mesh(
+            R_boundary=R_boundary,
+            z_boundary=z_boundary,
+            resolution=resolution,
+            padding_factor=edge_padding,
+            rotation=rotation,
+        )
+    else:
+        central_R, central_z, central_triangles = central_mesh
 
     # find all boundaries on the central mesh
     boundaries = find_boundaries(central_triangles)
