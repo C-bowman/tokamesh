@@ -4,8 +4,7 @@ from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
 from numpy import int64, ndarray
 from warnings import warn
 
-from tokamesh.utilities import build_edge_map
-
+from tokamesh.utilities import build_edge_map, map_edge_connections
 
 MeshData = tuple[ndarray, ndarray, ndarray]
 floatpair = tuple[float, float]
@@ -273,14 +272,7 @@ def find_boundaries(triangles: ndarray) -> list[ndarray]:
         )
 
     # now create a map between an edge, and the other edges to which it's connected
-    boundary_connections = {}
-    for i in range(boundary_edges.shape[0]):
-        edges = (
-            (boundary_edges[i, 0] == boundary_edges)
-            | (boundary_edges[i, 1] == boundary_edges)
-        ).nonzero()[0]
-        boundary_connections[i] = [e for e in edges if e != i]
-
+    boundary_connections = map_edge_connections(boundary_edges)
     # we use a set to keep track of which edges have already been used as part of a boundary
     unused_edges = {i for i in range(boundary_edges.shape[0])}
 
@@ -553,7 +545,7 @@ def mesh_generator(
     edge_padding: float = 0.75,
     edge_max_area: float = 1.1,
     rotation: float = None,
-    central_mesh: MeshData = None
+    central_mesh: MeshData = None,
 ) -> MeshData:
     """
     Generate a triangular mesh which fills the space inside a given boundary using a 2-stage

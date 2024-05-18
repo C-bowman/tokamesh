@@ -75,6 +75,27 @@ def build_edge_map(triangles: ndarray):
     return triangle_edges, edge_vertices, edge_map
 
 
+def map_edge_connections(edges: ndarray) -> dict[int, list[int]]:
+    """
+    Constructs a dictionary which maps the index of each edge to a list containing
+    the indices of any other edges to which it is connected.
+
+    :param edges: \
+        The indices of the pairs of vertices which define each edge as a 2D
+        ``numpy.ndarray`` of shape ``(N, 2)`` where ``N`` is the total number
+        of edges.
+
+    :return: \
+        A dictionary mapping the index of each edge to a list containing the indices
+        of any other edges to which it is connected.
+    """
+    connections = {}
+    for i in range(edges.shape[0]):
+        connected_edges = ((edges[i, 0] == edges) | (edges[i, 1] == edges)).nonzero()[0]
+        connections[i] = [e for e in connected_edges if e != i]
+    return connections
+
+
 class Camera:
     def __init__(
         self, position, direction, num_x=10, num_y=10, fov=40.0, max_distance=10.0
