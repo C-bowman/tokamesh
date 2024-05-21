@@ -1,17 +1,16 @@
 from numpy import sqrt, sinc, sin, cos, pi, exp
 from numpy import array, linspace, zeros, array_equal, piecewise
-from scipy.sparse import csc_array
 from numpy.random import default_rng
 from scipy.integrate import quad, simpson
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
-from tokamesh.geometry import GeometryCalculator, calculate_geometry_matrix
+from tokamesh.geometry import calculate_geometry_matrix
 from tokamesh.geometry import radius_hyperbolic_integral, linear_geometry_matrix
 from tokamesh.utilities import build_edge_map, Camera
 
 
-def test_BarycentricGeometryMatrix():
+def test_geometry_matrix_calculation():
     # build a basic mesh out of equilateral triangles
     R, z, triangles = equilateral_mesh(
         resolution=0.01, R_range=[0, 0.2], z_range=[-0.2, 0.2]
@@ -38,43 +37,6 @@ def test_BarycentricGeometryMatrix():
         num_y=15,
     )
 
-    # calculate the geometry matrix data
-    BGM = GeometryCalculator(
-        R=R, z=z, triangles=triangles, ray_origins=cam.ray_starts, ray_ends=cam.ray_ends
-    )
-
-    matrix_data = BGM.calculate()
-
-    # extract the data and build a sparse matrix
-    entry_values = matrix_data["entry_values"]
-    row_values = matrix_data["row_indices"]
-    col_values = matrix_data["col_indices"]
-    shape = matrix_data["shape"]
-    G = csc_array((entry_values, (row_values, col_values)), shape=shape)
-
-    parallel_matrix_data = calculate_geometry_matrix(
-        R=R,
-        z=z,
-        triangles=triangles,
-        ray_origins=cam.ray_starts,
-        ray_ends=cam.ray_ends,
-        n_processes=2,
-    )
-
-    K = csc_array(
-        (
-            parallel_matrix_data["entry_values"],
-            (parallel_matrix_data["row_indices"], parallel_matrix_data["col_indices"]),
-        ),
-        shape=parallel_matrix_data["shape"],
-    )
-
-    dG = G - K
-    assert abs(dG.data).max() < 1e-15
-
-    # get the geometry matrix prediction of the line-integrals
-    matrix_integrals = G @ field
-
     # manually calculate the line integrals for comparison
     L = linspace(0, 1.0, 3000)  # build a distance axis for the integrals
     # get the position of each ray at each distance
@@ -86,7 +48,21 @@ def test_BarycentricGeometryMatrix():
             R_projection[:, i], z_projection[:, i], vertex_values=field
         )
         direct_integrals[i] = simpson(samples, x=L)
-    assert (abs(direct_integrals / matrix_integrals - 1) < 1e-3).all()
+
+    for n_procs in [1, 2, 3]:
+        geomat = calculate_geometry_matrix(
+            R=R,
+            z=z,
+            triangles=triangles,
+            ray_origins=cam.ray_starts,
+            ray_ends=cam.ray_ends,
+            n_processes=n_procs,
+        )
+
+        G = geomat.build_sparse_array()
+        # get the geometry matrix prediction of the line-integrals
+        matrix_integrals = G @ field
+        assert (abs(direct_integrals / matrix_integrals - 1) < 1e-3).all()
 
 
 def test_radius_hyperbolic_integral():
