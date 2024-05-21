@@ -3,12 +3,12 @@ from numpy import absolute, nan, isfinite, minimum, maximum, isnan
 from numpy import array, full, zeros, stack, savez, concatenate
 from numpy import ndarray, finfo
 from collections import defaultdict
-from multiprocessing import Process, Pipe, Event
+from multiprocessing import Process, Pipe
 from multiprocessing.connection import Connection
 from time import perf_counter
 import sys
 
-from tokamesh.utilities import build_edge_map
+from tokamesh.utilities import build_edge_map, partition_triangles
 
 
 def calculate_geometry_matrix(
@@ -17,6 +17,7 @@ def calculate_geometry_matrix(
     triangles: ndarray,
     ray_origins: ndarray,
     ray_ends: ndarray,
+    n_processes: int
 ) -> dict:
     """
     Calculate a geometry matrix over a given triangular mesh using
@@ -43,6 +44,9 @@ def calculate_geometry_matrix(
         as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
         total number of rays.
 
+    :param n_processes: \
+        Number of processes over which the computation is distributed.
+
     :return: \
         The geometry matrix data as a dictionary of numpy arrays. The structure of
         the dictionary is as follows: ``entry_values`` is a 1D numpy array containing
@@ -52,6 +56,13 @@ def calculate_geometry_matrix(
         ``shape`` is a 1D numpy array containing the dimensions of the matrix. The
         arrays defining the mesh are also stored as ``R``, ``z`` and ``triangles``.
     """
+    t_start = perf_counter()
+    dt = perf_counter() - t_start
+    sys.stdout.write(
+        f"\r >> Calculating geometry matrix...                                         "
+    )
+    sys.stdout.flush()
+
     GC = GeometryCalculator(
         R=R,
         z=z,
@@ -60,39 +71,29 @@ def calculate_geometry_matrix(
         ray_ends=ray_ends,
     )
 
-    # clear the geometry factors in case they contain data from a previous calculation
-    GC.GeomFacs.vertex_map.clear()
-    # process the first triangle so we can estimate the run-time
-    t_start = perf_counter()
-    GC.process_triangle(0)
-    dt = perf_counter() - t_start
-
-    # use the estimate to break the evaluation into groups
-    group_size = max(min(int(1.0 / dt), (GC.n_triangles - 1) // 4), 1)
-    remainder = (GC.n_triangles - 1) % group_size
-    ranges = zip(
-        range(1, GC.n_triangles, group_size),
-        range(1 + group_size, GC.n_triangles, group_size),
-    )
+    index_groups = partition_triangles(R=R, z=z, triangles=triangles, partitions=n_processes)
 
     # calculate the contribution to the matrix for each triangle
-    for start, end in ranges:
-        [GC.process_triangle(i) for i in range(start, end)]
-
-        # print the progress
-        f_complete = (end + 1) / GC.n_triangles
-        eta = int((perf_counter() - t_start) * (1 - f_complete) / f_complete)
-        sys.stdout.write(
-            f"\r >> Calculating geometry matrix:  [ {f_complete:.1%} complete   ETA: {eta} sec ]           "
+    # Spawn a separate process for each chain object
+    processes = []
+    connections = []
+    for indices in index_groups:
+        parent_ctn, child_ctn = Pipe()
+        connections.append(parent_ctn)
+        p = Process(
+            target=triangle_process,
+            args=(GC, indices, child_ctn),
         )
-        sys.stdout.flush()
+        processes.append(p)
 
-    # clean up any remaining triangles
-    if remainder != 0:
-        [
-            GC.process_triangle(i)
-            for i in range(GC.n_triangles - remainder, GC.n_triangles)
-        ]
+    [p.start() for p in processes]
+    vertex_maps = [pipe.recv() for pipe in connections]
+    [p.join() for p in processes]
+
+    GF = GeometryFactors()
+    for v in vertex_maps:
+        for inds, value in v.items():
+            GF.vertex_map[inds] += value
 
     t_elapsed = perf_counter() - t_start
     mins, secs = divmod(t_elapsed, 60)
@@ -105,7 +106,7 @@ def calculate_geometry_matrix(
     sys.stdout.write("\n")
 
     # convert the calculated matrix elements to a form appropriate for sparse matrices
-    data_vals, vertex_inds, ray_inds = GC.GeomFacs.get_sparse_matrix_data()
+    data_vals, vertex_inds, ray_inds = GF.get_sparse_matrix_data()
 
     data_dict = {
         "entry_values": data_vals,
@@ -551,7 +552,7 @@ def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
 
 class GeometryFactors:
     def __init__(self):
-        self.vertex_map = defaultdict(lambda: 0.0)
+        self.vertex_map = defaultdict(float)
 
     def update_vertex(self, vertex_ind, ray_indices, integral_vals):
         for ray_idx, value in zip(ray_indices, integral_vals):
@@ -565,31 +566,12 @@ class GeometryFactors:
 
 
 def triangle_process(
-    calculator: GeometryCalculator, connection: Connection, end: Event
+    calculator: GeometryCalculator,
+    triangle_indices: ndarray,
+    connection: Connection,
 ):
-    # main loop
-    while not end.is_set():
-        # poll the pipe until there is something to read
-        while not end.is_set():
-            if connection.poll(timeout=0.05):
-                D = connection.recv()
-                break
-
-        # if read loop was broken because of shutdown event
-        # then break the main loop as well
-        if end.is_set():
-            break
-
-        task = D["task"]
-
-        if task == "process_triangles":
-            start, stop = D["triangles_range"]
-            [calculator.process_triangle(i) for i in range(start, stop)]
-            connection.send("processing_complete")  # send signal to confirm completion
-
-        # return the local chain object
-        elif task == "return_vertex_map":
-            connection.send(calculator.GeomFacs.vertex_map)
+    [calculator.process_triangle(i) for i in triangle_indices]
+    connection.send(calculator.GeomFacs.vertex_map)
 
 
 def linear_geometry_matrix(
