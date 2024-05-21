@@ -2,13 +2,51 @@ from numpy import sqrt, log
 from numpy import absolute, nan, isfinite, minimum, maximum, isnan
 from numpy import array, full, zeros, stack, savez, concatenate
 from numpy import ndarray, finfo
+from scipy.sparse import csc_array
 from collections import defaultdict
+from dataclasses import dataclass
 from multiprocessing import Process, Pipe
 from multiprocessing.connection import Connection
 from time import perf_counter
 import sys
 
 from tokamesh.utilities import build_edge_map, partition_triangles
+
+
+@dataclass
+class GeometryMatrix:
+    entry_values: ndarray
+    row_indices: ndarray
+    col_indices: ndarray
+    matrix_shape: ndarray
+    R_vertices: ndarray
+    z_vertices: ndarray
+    triangle_vertices: ndarray
+
+    def build_sparse_array(self, sparse_array_type=csc_array):
+        """
+        :param sparse_array_type: \
+            A sparse array type from ``scipy.sparse``.
+
+        :return: \
+            The geometry matrix as an instance of the given sparse array type.
+        """
+        return sparse_array_type(
+            (self.entry_values, (self.row_indices, self.col_indices)),
+            shape=self.matrix_shape
+        )
+
+    def save(self, filename: str):
+        savez(
+            filename,
+            entry_values=self.entry_values,
+            row_indices=self.row_indices,
+            col_indices=self.col_indices,
+            matrix_shape=self.matrix_shape,
+            R_vertices=self.R_vertices,
+            z_vertices=self.z_vertices,
+            triangle_vertices=self.triangle_vertices
+        )
 
 
 def calculate_geometry_matrix(
@@ -18,7 +56,7 @@ def calculate_geometry_matrix(
     ray_origins: ndarray,
     ray_ends: ndarray,
     n_processes: int,
-) -> dict:
+) -> GeometryMatrix:
     """
     Calculate a geometry matrix over a given triangular mesh using
     barycentric linear interpolation.
@@ -107,20 +145,18 @@ def calculate_geometry_matrix(
     sys.stdout.flush()
     sys.stdout.write("\n")
 
-    # convert the calculated matrix elements to a form appropriate for sparse matrices
+    # convert the calculated matrix elements to a form appropriate for sparse arrays
     data_vals, vertex_inds, ray_inds = GF.get_sparse_matrix_data()
 
-    data_dict = {
-        "entry_values": data_vals,
-        "row_indices": ray_inds,
-        "col_indices": vertex_inds,
-        "shape": array([GC.n_rays, GC.n_vertices]),
-        "R": R,
-        "z": z,
-        "triangles": triangles,
-    }
-
-    return data_dict
+    return GeometryMatrix(
+        entry_values=data_vals,
+        row_indices=ray_inds,
+        col_indices=vertex_inds,
+        matrix_shape=array([GC.n_rays, GC.n_vertices]),
+        R_vertices=R,
+        z_vertices=z,
+        triangle_vertices=triangles
+    )
 
 
 class GeometryCalculator:
@@ -417,7 +453,7 @@ class GeometryCalculator:
         if (intersection_count % 2 == 1).any():
             raise ValueError(
                 f"""\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> One or more rays has an odd number of intersections with
                 \r>> triangle {tri_index}. This is typically caused by insufficient
                 \r>> floating-point precision in the intersection calculations.
@@ -486,7 +522,7 @@ class GeometryCalculator:
         ):
             raise TypeError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> All arguments must be of type numpy.ndarray.
                 """
             )
@@ -494,7 +530,7 @@ class GeometryCalculator:
         if R.ndim != 1 or z.ndim != 1 or R.size != z.size:
             raise ValueError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> 'R' and 'z' arguments must be 1-dimensional arrays of equal length.
                 """
             )
@@ -502,7 +538,7 @@ class GeometryCalculator:
         if triangle_inds.ndim != 2 or triangle_inds.shape[1] != 3:
             raise ValueError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> 'triangle_inds' argument must be a 2-dimensional array of shape (N,3)
                 \r>> where 'N' is the total number of triangles.
                 """
@@ -517,7 +553,7 @@ class GeometryCalculator:
         ):
             raise ValueError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> 'ray_starts' and 'ray_ends' arguments must be 2-dimensional arrays
                 \r>> of shape (M,3), where 'M' is the total number of rays.
                 """
@@ -533,7 +569,7 @@ class GeometryCalculator:
             if float_precision < 15:
                 raise ValueError(
                     f"""\n\n
-                    \r[ BarycentricGeometryMatrix error ]
+                    \r[ GeometryCalculator error ]
                     \r>> The '{tag}' argument array has a data-type of {arr.dtype}
                     \r>> with a decimal precision of {float_precision}.
                     \r>> Arrays should use at least 64-bit floats, such that the
