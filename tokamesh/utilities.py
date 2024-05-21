@@ -1,6 +1,7 @@
 from collections import defaultdict
 from numpy import linspace, full, int64, arange, searchsorted, ndarray, zeros
 from numpy import pi, sqrt, dot, array, cross, identity, tan
+from itertools import chain, count
 
 
 class BinaryTree:
@@ -154,3 +155,131 @@ class Camera:
         R = sqrt(positions[:, 0, :] ** 2 + positions[:, 1, :] ** 2).T
         z = positions[:, 2, :].T
         return R, z
+
+
+def slice_builder(lengths: list[int]) -> list[slice]:
+    slices = [slice(0, lengths[0])]
+    for L in lengths[1:]:
+        last = slices[-1].stop
+        slices.append(slice(last, last + L))
+    return slices
+
+
+def batch_builder(n_tasks: int, n_batches: int) -> list[slice]:
+    """
+    Builds a list of slice objects which divide an iterable into batches
+    (of as even size as possible) which can be distributed to various processes.
+
+    :param n_tasks: \
+        Number of tasks to be split into batches (i.e. the length of the iterable).
+
+    :param n_batches: \
+        Number of batches over which the tasks will be distributed.
+
+    :return: List of slice objects addressing each batch.
+    """
+    if n_batches > 1:
+        # balance the number of time-slices across available processes
+        if n_tasks >= n_batches:
+            d, r = divmod(n_tasks, n_batches)
+            batch_sizes = [d + 1 if i < r else d for i in range(n_batches)]
+        else:
+            batch_sizes = [1] * n_tasks
+        # build slices to address fitting data for each process
+        slices = slice_builder(batch_sizes)
+    else:
+        slices = [slice(n_tasks)]
+    return slices
+
+
+def partition_longest(
+    R: ndarray, z: ndarray, indices: ndarray, partitions: int
+) -> list[tuple]:
+    ordering = R.argsort() if R.ptp() > z.ptp() else z.argsort()
+    slices = batch_builder(n_tasks=R.size, n_batches=partitions)
+    decomp = []
+    for s in slices:
+        inds = ordering[s]
+        decomp.append((R[inds], z[inds], indices[inds]))
+    return decomp
+
+
+def mesh_decomposition(
+    R: ndarray, z: ndarray, indices: ndarray, factors: list[int]
+) -> list[ndarray]:
+    groups = [(R, z, indices)]
+    for partitions in factors:
+        groups = chain(*[partition_longest(*g, partitions) for g in groups])
+    return [g[2] for g in groups]
+
+
+def partition_triangles(
+    R: ndarray, z: ndarray, triangles: ndarray, partitions: int
+) -> list[ndarray]:
+    """
+    Partition the mesh into evenly-sized groups of triangles by recursively splitting
+    each partition along its longest dimension by the prime factors of the number of
+    requested partitions.
+
+    :param R: \
+        The major radius of each mesh vertex as a 1D numpy ``ndarray``.
+
+    :param z: \
+        The z-height of each mesh vertex as a 1D numpy ``ndarray``.
+
+    :param triangles: \
+        A 2D numpy ``ndarray`` of integers specifying the indices of the vertices which
+        form each of the triangles in the mesh. The array must have shape ``(N, 3)``
+        where ``N`` is the total number of triangles.
+
+    :param partitions: \
+        The number of requested partitions.
+
+    :return: \
+        A list of numpy ``ndarray`` which specify the indices of the triangles in each
+        partition.
+    """
+    factors = prime_factors(partitions)
+    R_tri = R[triangles].mean(axis=1)
+    z_tri = z[triangles].mean(axis=1)
+    inds = arange(R_tri.size)
+    return mesh_decomposition(R=R_tri, z=z_tri, indices=inds, factors=factors)
+
+
+def partition_vertices(R: ndarray, z: ndarray, partitions: int) -> list[ndarray]:
+    """
+    Partition the mesh into evenly-sized groups of vertices by recursively splitting
+    each partition along its longest dimension by the prime factors of the number of
+    requested partitions.
+
+    :param R: \
+        The major radius of each mesh vertex as a 1D numpy ``ndarray``.
+
+    :param z: \
+        The z-height of each mesh vertex as a 1D numpy ``ndarray``.
+
+    :param partitions: \
+        The number of requested partitions.
+
+    :return: \
+        A list of numpy ``ndarray`` which specify the indices of the vertices in each
+        partition.
+    """
+    factors = prime_factors(partitions)[::-1]
+    return mesh_decomposition(R=R, z=z, indices=arange(R.size), factors=factors)
+
+
+def prime_factors(n: int) -> list[int]:
+    divsors = count(3, 2)
+    divisor = 2
+    factors = []
+    while divisor * divisor <= n:
+        quotient, remainder = divmod(n, divisor)
+        if remainder:
+            divisor = next(divsors)
+        else:
+            n = quotient
+            factors.append(divisor)
+    if n > 1:
+        factors.append(n)
+    return factors
