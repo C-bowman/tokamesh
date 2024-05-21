@@ -3,13 +3,124 @@ from numpy import absolute, nan, isfinite, minimum, maximum, isnan
 from numpy import array, full, zeros, stack, savez, concatenate
 from numpy import ndarray, finfo
 from collections import defaultdict
+from multiprocessing import Process, Pipe, Event
+from multiprocessing.connection import Connection
 from time import perf_counter
 import sys
 
 from tokamesh.utilities import build_edge_map
 
 
-class BarycentricGeometryMatrix:
+def calculate_geometry_matrix(
+    R: ndarray,
+    z: ndarray,
+    triangles: ndarray,
+    ray_origins: ndarray,
+    ray_ends: ndarray,
+) -> dict:
+    """
+    Calculate a geometry matrix over a given triangular mesh using
+    barycentric linear interpolation.
+
+    :param R: \
+        The major radius of each mesh vertex as a 1D numpy array.
+
+    :param z: \
+        The z-height of each mesh vertex as a 1D numpy array.
+
+    :param triangles: \
+        A 2D numpy array of integers specifying the indices of the vertices which form
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
+
+    :param ray_origins: \
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param ray_ends: \
+        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :return: \
+        The geometry matrix data as a dictionary of numpy arrays. The structure of
+        the dictionary is as follows: ``entry_values`` is a 1D numpy array containing
+        the values of all non-zero matrix entries. ``row_indices`` is a 1D numpy
+        array containing the row-index of each of the non-zero entries. ``col_indices``
+        is a 1D numpy array containing the column-index of each of the non-zero entries.
+        ``shape`` is a 1D numpy array containing the dimensions of the matrix. The
+        arrays defining the mesh are also stored as ``R``, ``z`` and ``triangles``.
+    """
+    GC = GeometryCalculator(
+        R=R,
+        z=z,
+        triangles=triangles,
+        ray_origins=ray_origins,
+        ray_ends=ray_ends,
+    )
+
+    # clear the geometry factors in case they contain data from a previous calculation
+    GC.GeomFacs.vertex_map.clear()
+    # process the first triangle so we can estimate the run-time
+    t_start = perf_counter()
+    GC.process_triangle(0)
+    dt = perf_counter() - t_start
+
+    # use the estimate to break the evaluation into groups
+    group_size = max(min(int(1.0 / dt), (GC.n_triangles - 1) // 4), 1)
+    remainder = (GC.n_triangles - 1) % group_size
+    ranges = zip(
+        range(1, GC.n_triangles, group_size),
+        range(1 + group_size, GC.n_triangles, group_size),
+    )
+
+    # calculate the contribution to the matrix for each triangle
+    for start, end in ranges:
+        [GC.process_triangle(i) for i in range(start, end)]
+
+        # print the progress
+        f_complete = (end + 1) / GC.n_triangles
+        eta = int((perf_counter() - t_start) * (1 - f_complete) / f_complete)
+        sys.stdout.write(
+            f"\r >> Calculating geometry matrix:  [ {f_complete:.1%} complete   ETA: {eta} sec ]           "
+        )
+        sys.stdout.flush()
+
+    # clean up any remaining triangles
+    if remainder != 0:
+        [
+            GC.process_triangle(i)
+            for i in range(GC.n_triangles - remainder, GC.n_triangles)
+        ]
+
+    t_elapsed = perf_counter() - t_start
+    mins, secs = divmod(t_elapsed, 60)
+    hrs, mins = divmod(mins, 60)
+    time_taken = f"{int(hrs)}:{int(mins):02d}:{int(secs):02d}"
+    sys.stdout.write(
+        f"\r >> Calculating geometry matrix:  [ completed in {time_taken} ]           "
+    )
+    sys.stdout.flush()
+    sys.stdout.write("\n")
+
+    # convert the calculated matrix elements to a form appropriate for sparse matrices
+    data_vals, vertex_inds, ray_inds = GC.GeomFacs.get_sparse_matrix_data()
+
+    data_dict = {
+        "entry_values": data_vals,
+        "row_indices": ray_inds,
+        "col_indices": vertex_inds,
+        "shape": array([GC.n_rays, GC.n_vertices]),
+        "R": R,
+        "z": z,
+        "triangles": triangles,
+    }
+
+    return data_dict
+
+
+class GeometryCalculator:
     """
     Class for calculating geometry matrices over triangular meshes using
     barycentric linear interpolation.
@@ -139,7 +250,7 @@ class BarycentricGeometryMatrix:
             ``shape`` is a 1D numpy array containing the dimensions of the matrix. The
             arrays defining the mesh are also stored as ``R``, ``z`` and ``triangles``.
         """
-        # clear the geometry factors in case they contains data from a previous calculation
+        # clear the geometry factors in case they contain data from a previous calculation
         self.GeomFacs.vertex_map.clear()
         # process the first triangle so we can estimate the run-time
         t_start = perf_counter()
@@ -451,6 +562,34 @@ class GeometryFactors:
         ray_inds = array([key[1] for key in self.vertex_map.keys()])
         data_vals = array([v for v in self.vertex_map.values()])
         return data_vals, vertex_inds, ray_inds
+
+
+def triangle_process(
+    calculator: GeometryCalculator, connection: Connection, end: Event
+):
+    # main loop
+    while not end.is_set():
+        # poll the pipe until there is something to read
+        while not end.is_set():
+            if connection.poll(timeout=0.05):
+                D = connection.recv()
+                break
+
+        # if read loop was broken because of shutdown event
+        # then break the main loop as well
+        if end.is_set():
+            break
+
+        task = D["task"]
+
+        if task == "process_triangles":
+            start, stop = D["triangles_range"]
+            [calculator.process_triangle(i) for i in range(start, stop)]
+            connection.send("processing_complete")  # send signal to confirm completion
+
+        # return the local chain object
+        elif task == "return_vertex_map":
+            connection.send(calculator.GeomFacs.vertex_map)
 
 
 def linear_geometry_matrix(

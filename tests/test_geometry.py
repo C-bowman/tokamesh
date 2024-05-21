@@ -6,7 +6,7 @@ from scipy.integrate import quad, simpson
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
-from tokamesh.geometry import BarycentricGeometryMatrix, linear_geometry_matrix
+from tokamesh.geometry import GeometryCalculator, linear_geometry_matrix
 from tokamesh.geometry import radius_hyperbolic_integral
 from tokamesh.utilities import build_edge_map, Camera
 
@@ -39,7 +39,7 @@ def test_BarycentricGeometryMatrix():
     )
 
     # calculate the geometry matrix data
-    BGM = BarycentricGeometryMatrix(
+    BGM = GeometryCalculator(
         R=R, z=z, triangles=triangles, ray_origins=cam.ray_starts, ray_ends=cam.ray_ends
     )
 
@@ -66,7 +66,7 @@ def test_BarycentricGeometryMatrix():
             R_projection[:, i], z_projection[:, i], vertex_values=field
         )
         direct_integrals[i] = simpson(samples, x=L)
-    assert (abs(direct_integrals - matrix_integrals) < 1e-3).all()
+    assert (abs(direct_integrals / matrix_integrals - 1) < 1e-3).all()
 
 
 def test_radius_hyperbolic_integral():
