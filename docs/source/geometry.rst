@@ -11,4 +11,4 @@ Example code for geometry matrix calculation can be found in the
 
 
 .. autoclass:: tokamesh.geometry.GeometryMatrix
-   :members: build_sparse_array, save
+   :members: build_sparse_array, save, entry_values

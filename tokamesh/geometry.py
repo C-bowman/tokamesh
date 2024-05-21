@@ -15,6 +15,10 @@ from tokamesh.utilities import build_edge_map, partition_triangles
 
 @dataclass
 class GeometryMatrix:
+    """
+    :ivar entry_values: \
+        The values of the non-zero matrix elements as a numpy ``ndarray``.
+    """
     entry_values: ndarray
     row_indices: ndarray
     col_indices: ndarray
@@ -86,13 +90,8 @@ def calculate_geometry_matrix(
         Number of processes over which the computation is distributed.
 
     :return: \
-        The geometry matrix data as a dictionary of numpy arrays. The structure of
-        the dictionary is as follows: ``entry_values`` is a 1D numpy array containing
-        the values of all non-zero matrix entries. ``row_indices`` is a 1D numpy
-        array containing the row-index of each of the non-zero entries. ``col_indices``
-        is a 1D numpy array containing the column-index of each of the non-zero entries.
-        ``shape`` is a 1D numpy array containing the dimensions of the matrix. The
-        arrays defining the mesh are also stored as ``R``, ``z`` and ``triangles``.
+        A ``GeometryMatrix`` object containing the geometry matrix data - see the
+        documentation for ``GeometryMatrix`` for details.
     """
     t_start = perf_counter()
     dt = perf_counter() - t_start
