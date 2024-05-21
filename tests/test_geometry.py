@@ -58,15 +58,15 @@ def test_BarycentricGeometryMatrix():
         triangles=triangles,
         ray_origins=cam.ray_starts,
         ray_ends=cam.ray_ends,
-        n_processes=2
+        n_processes=2,
     )
 
     K = csc_array(
         (
             parallel_matrix_data["entry_values"],
-            (parallel_matrix_data["row_indices"], parallel_matrix_data["col_indices"])
+            (parallel_matrix_data["row_indices"], parallel_matrix_data["col_indices"]),
         ),
-        shape=parallel_matrix_data["shape"]
+        shape=parallel_matrix_data["shape"],
     )
 
     dG = G - K

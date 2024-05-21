@@ -17,7 +17,7 @@ def calculate_geometry_matrix(
     triangles: ndarray,
     ray_origins: ndarray,
     ray_ends: ndarray,
-    n_processes: int
+    n_processes: int,
 ) -> dict:
     """
     Calculate a geometry matrix over a given triangular mesh using
@@ -71,7 +71,9 @@ def calculate_geometry_matrix(
         ray_ends=ray_ends,
     )
 
-    index_groups = partition_triangles(R=R, z=z, triangles=triangles, partitions=n_processes)
+    index_groups = partition_triangles(
+        R=R, z=z, triangles=triangles, partitions=n_processes
+    )
 
     # calculate the contribution to the matrix for each triangle
     # Spawn a separate process for each chain object
