@@ -33,7 +33,7 @@ class GeometryMatrix:
         """
         return sparse_array_type(
             (self.entry_values, (self.row_indices, self.col_indices)),
-            shape=self.matrix_shape
+            shape=self.matrix_shape,
         )
 
     def save(self, filename: str):
@@ -45,7 +45,7 @@ class GeometryMatrix:
             matrix_shape=self.matrix_shape,
             R_vertices=self.R_vertices,
             z_vertices=self.z_vertices,
-            triangle_vertices=self.triangle_vertices
+            triangle_vertices=self.triangle_vertices,
         )
 
 
@@ -155,7 +155,7 @@ def calculate_geometry_matrix(
         matrix_shape=array([GC.n_rays, GC.n_vertices]),
         R_vertices=R,
         z_vertices=z,
-        triangle_vertices=triangles
+        triangle_vertices=triangles,
     )
 
 
