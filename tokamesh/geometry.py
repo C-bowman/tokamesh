@@ -16,8 +16,30 @@ from tokamesh.utilities import build_edge_map, partition_triangles
 @dataclass
 class GeometryMatrix:
     """
+    A class for packaging and manipulating geometry matrix data.
+
     :ivar entry_values: \
         The values of the non-zero matrix elements as a numpy ``ndarray``.
+
+    :ivar row_indices: \
+        The row indices of the non-zero matrix elements as a numpy ``ndarray``.
+
+    :ivar col_indices: \
+        The column indices of the non-zero matrix elements as a numpy ``ndarray``.
+
+    :ivar matrix_shape: \
+        The shape of the geometry matrix as a numpy ``ndarray``.
+
+    :ivar R_vertices: \
+        The major-radius of the triangular mesh vertices as a numpy ``ndarray``.
+
+    :ivar z_vertices: \
+        The z-height of the triangular mesh vertices as a numpy ``ndarray``.
+
+    :ivar triangle_vertices: \
+        A 2D numpy ``ndarray`` of integers specifying the indices of the vertices which
+        form each of the triangles in the mesh. The array has shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
     """
 
     entry_values: ndarray
