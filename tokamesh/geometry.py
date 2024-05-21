@@ -19,6 +19,7 @@ class GeometryMatrix:
     :ivar entry_values: \
         The values of the non-zero matrix elements as a numpy ``ndarray``.
     """
+
     entry_values: ndarray
     row_indices: ndarray
     col_indices: ndarray
