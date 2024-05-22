@@ -2,14 +2,186 @@ from numpy import sqrt, log
 from numpy import absolute, nan, isfinite, minimum, maximum, isnan
 from numpy import array, full, zeros, stack, savez, concatenate
 from numpy import ndarray, finfo
+from scipy.sparse import csc_array
 from collections import defaultdict
+from dataclasses import dataclass
+from multiprocessing import Process, Pipe
+from multiprocessing.connection import Connection
 from time import perf_counter
 import sys
 
-from tokamesh.utilities import build_edge_map
+from tokamesh.utilities import build_edge_map, partition_triangles
 
 
-class BarycentricGeometryMatrix:
+@dataclass
+class GeometryMatrix:
+    """
+    A class for packaging and manipulating geometry matrix data.
+
+    :ivar entry_values: \
+        The values of the non-zero matrix elements as a numpy ``ndarray``.
+
+    :ivar row_indices: \
+        The row indices of the non-zero matrix elements as a numpy ``ndarray``.
+
+    :ivar col_indices: \
+        The column indices of the non-zero matrix elements as a numpy ``ndarray``.
+
+    :ivar matrix_shape: \
+        The shape of the geometry matrix as a numpy ``ndarray``.
+
+    :ivar R_vertices: \
+        The major-radius of the triangular mesh vertices as a numpy ``ndarray``.
+
+    :ivar z_vertices: \
+        The z-height of the triangular mesh vertices as a numpy ``ndarray``.
+
+    :ivar triangle_vertices: \
+        A 2D numpy ``ndarray`` of integers specifying the indices of the vertices which
+        form each of the triangles in the mesh. The array has shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
+    """
+
+    entry_values: ndarray
+    row_indices: ndarray
+    col_indices: ndarray
+    matrix_shape: ndarray
+    R_vertices: ndarray
+    z_vertices: ndarray
+    triangle_vertices: ndarray
+
+    def build_sparse_array(self, sparse_array_type=csc_array):
+        """
+        :param sparse_array_type: \
+            A sparse array type from ``scipy.sparse``.
+
+        :return: \
+            The geometry matrix as an instance of the given sparse array type.
+        """
+        return sparse_array_type(
+            (self.entry_values, (self.row_indices, self.col_indices)),
+            shape=self.matrix_shape,
+        )
+
+    def save(self, filename: str):
+        savez(
+            filename,
+            entry_values=self.entry_values,
+            row_indices=self.row_indices,
+            col_indices=self.col_indices,
+            matrix_shape=self.matrix_shape,
+            R_vertices=self.R_vertices,
+            z_vertices=self.z_vertices,
+            triangle_vertices=self.triangle_vertices,
+        )
+
+
+def calculate_geometry_matrix(
+    R: ndarray,
+    z: ndarray,
+    triangles: ndarray,
+    ray_origins: ndarray,
+    ray_ends: ndarray,
+    n_processes: int,
+) -> GeometryMatrix:
+    """
+    Calculate a geometry matrix over a given triangular mesh using
+    barycentric linear interpolation.
+
+    :param R: \
+        The major radius of each mesh vertex as a 1D numpy array.
+
+    :param z: \
+        The z-height of each mesh vertex as a 1D numpy array.
+
+    :param triangles: \
+        A 2D numpy array of integers specifying the indices of the vertices which form
+        each of the triangles in the mesh. The array must have shape ``(N,3)`` where
+        ``N`` is the total number of triangles.
+
+    :param ray_origins: \
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param ray_ends: \
+        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param n_processes: \
+        Number of processes over which the computation is distributed.
+
+    :return: \
+        A ``GeometryMatrix`` object containing the geometry matrix data - see the
+        documentation for ``GeometryMatrix`` for details.
+    """
+    t_start = perf_counter()
+    dt = perf_counter() - t_start
+    sys.stdout.write(
+        f"\r >> Calculating geometry matrix...                                         "
+    )
+    sys.stdout.flush()
+
+    GC = GeometryCalculator(
+        R=R,
+        z=z,
+        triangles=triangles,
+        ray_origins=ray_origins,
+        ray_ends=ray_ends,
+    )
+
+    index_groups = partition_triangles(
+        R=R, z=z, triangles=triangles, partitions=n_processes
+    )
+
+    # calculate the contribution to the matrix for each triangle
+    # Spawn a separate process for each chain object
+    processes = []
+    connections = []
+    for indices in index_groups:
+        parent_ctn, child_ctn = Pipe()
+        connections.append(parent_ctn)
+        p = Process(
+            target=triangle_process,
+            args=(GC, indices, child_ctn),
+        )
+        processes.append(p)
+
+    [p.start() for p in processes]
+    vertex_maps = [pipe.recv() for pipe in connections]
+    [p.join() for p in processes]
+
+    GF = GeometryFactors()
+    for v in vertex_maps:
+        for inds, value in v.items():
+            GF.vertex_map[inds] += value
+
+    t_elapsed = perf_counter() - t_start
+    mins, secs = divmod(t_elapsed, 60)
+    hrs, mins = divmod(mins, 60)
+    time_taken = f"{int(hrs)}:{int(mins):02d}:{int(secs):02d}"
+    sys.stdout.write(
+        f"\r >> Calculating geometry matrix:  [ completed in {time_taken} ]           "
+    )
+    sys.stdout.flush()
+    sys.stdout.write("\n")
+
+    # convert the calculated matrix elements to a form appropriate for sparse arrays
+    data_vals, vertex_inds, ray_inds = GF.get_sparse_matrix_data()
+
+    return GeometryMatrix(
+        entry_values=data_vals,
+        row_indices=ray_inds,
+        col_indices=vertex_inds,
+        matrix_shape=array([GC.n_rays, GC.n_vertices]),
+        R_vertices=R,
+        z_vertices=z,
+        triangle_vertices=triangles,
+    )
+
+
+class GeometryCalculator:
     """
     Class for calculating geometry matrices over triangular meshes using
     barycentric linear interpolation.
@@ -139,7 +311,7 @@ class BarycentricGeometryMatrix:
             ``shape`` is a 1D numpy array containing the dimensions of the matrix. The
             arrays defining the mesh are also stored as ``R``, ``z`` and ``triangles``.
         """
-        # clear the geometry factors in case they contains data from a previous calculation
+        # clear the geometry factors in case they contain data from a previous calculation
         self.GeomFacs.vertex_map.clear()
         # process the first triangle so we can estimate the run-time
         t_start = perf_counter()
@@ -303,7 +475,7 @@ class BarycentricGeometryMatrix:
         if (intersection_count % 2 == 1).any():
             raise ValueError(
                 f"""\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> One or more rays has an odd number of intersections with
                 \r>> triangle {tri_index}. This is typically caused by insufficient
                 \r>> floating-point precision in the intersection calculations.
@@ -372,7 +544,7 @@ class BarycentricGeometryMatrix:
         ):
             raise TypeError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> All arguments must be of type numpy.ndarray.
                 """
             )
@@ -380,7 +552,7 @@ class BarycentricGeometryMatrix:
         if R.ndim != 1 or z.ndim != 1 or R.size != z.size:
             raise ValueError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> 'R' and 'z' arguments must be 1-dimensional arrays of equal length.
                 """
             )
@@ -388,7 +560,7 @@ class BarycentricGeometryMatrix:
         if triangle_inds.ndim != 2 or triangle_inds.shape[1] != 3:
             raise ValueError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> 'triangle_inds' argument must be a 2-dimensional array of shape (N,3)
                 \r>> where 'N' is the total number of triangles.
                 """
@@ -403,7 +575,7 @@ class BarycentricGeometryMatrix:
         ):
             raise ValueError(
                 """\n\n
-                \r[ BarycentricGeometryMatrix error ]
+                \r[ GeometryCalculator error ]
                 \r>> 'ray_starts' and 'ray_ends' arguments must be 2-dimensional arrays
                 \r>> of shape (M,3), where 'M' is the total number of rays.
                 """
@@ -419,7 +591,7 @@ class BarycentricGeometryMatrix:
             if float_precision < 15:
                 raise ValueError(
                     f"""\n\n
-                    \r[ BarycentricGeometryMatrix error ]
+                    \r[ GeometryCalculator error ]
                     \r>> The '{tag}' argument array has a data-type of {arr.dtype}
                     \r>> with a decimal precision of {float_precision}.
                     \r>> Arrays should use at least 64-bit floats, such that the
@@ -440,17 +612,26 @@ def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
 
 class GeometryFactors:
     def __init__(self):
-        self.vertex_map = defaultdict(lambda: 0.0)
+        self.vertex_map = defaultdict(float)
 
     def update_vertex(self, vertex_ind, ray_indices, integral_vals):
         for ray_idx, value in zip(ray_indices, integral_vals):
             self.vertex_map[(vertex_ind, ray_idx)] += value
 
     def get_sparse_matrix_data(self):
-        vertex_inds = array([key[0] for key in self.vertex_map.keys()])
-        ray_inds = array([key[1] for key in self.vertex_map.keys()])
+        vertex_inds = array([key[0] for key in self.vertex_map.keys()], dtype=int)
+        ray_inds = array([key[1] for key in self.vertex_map.keys()], dtype=int)
         data_vals = array([v for v in self.vertex_map.values()])
         return data_vals, vertex_inds, ray_inds
+
+
+def triangle_process(
+    calculator: GeometryCalculator,
+    triangle_indices: ndarray,
+    connection: Connection,
+):
+    [calculator.process_triangle(i) for i in triangle_indices]
+    connection.send(calculator.GeomFacs.vertex_map)
 
 
 def linear_geometry_matrix(
