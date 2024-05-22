@@ -619,8 +619,8 @@ class GeometryFactors:
             self.vertex_map[(vertex_ind, ray_idx)] += value
 
     def get_sparse_matrix_data(self):
-        vertex_inds = array([key[0] for key in self.vertex_map.keys()])
-        ray_inds = array([key[1] for key in self.vertex_map.keys()])
+        vertex_inds = array([key[0] for key in self.vertex_map.keys()], dtype=int)
+        ray_inds = array([key[1] for key in self.vertex_map.keys()], dtype=int)
         data_vals = array([v for v in self.vertex_map.values()])
         return data_vals, vertex_inds, ray_inds
 
