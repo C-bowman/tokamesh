@@ -162,7 +162,7 @@ def calculate_geometry_matrix(
     hrs, mins = divmod(mins, 60)
     time_taken = f"{int(hrs)}:{int(mins):02d}:{int(secs):02d}"
     sys.stdout.write(
-        f"\r >> Calculating geometry matrix:  [ completed in {time_taken} ]           "
+        f"\r >> Calculating geometry matrix:  [ completed in {time_taken} ]            "
     )
     sys.stdout.flush()
     sys.stdout.write("\n")

@@ -1,6 +1,6 @@
 from numpy import arange, array, concatenate, full, ones, tile, ndarray, zeros
 from numpy import sqrt, diff
-from scipy.sparse import csc_matrix, csr_matrix
+from scipy.sparse import csr_array
 from scipy.special import factorial
 from scipy.linalg import solve
 from itertools import product
@@ -8,7 +8,11 @@ from tokamesh.utilities import build_edge_map
 
 
 def edge_difference_matrix(
-    R: ndarray, z: ndarray, triangles: ndarray, normalised=False, sparse_format="csr"
+    R: ndarray,
+    z: ndarray,
+    triangles: ndarray,
+    normalised=False,
+    sparse_array_type=csr_array,
 ):
     """
     Generates a sparse matrix which, when operating on a vector of field
@@ -30,10 +34,12 @@ def edge_difference_matrix(
         If set as ``True``, the difference in the value across each edge is normalised by
         the length of the edge, yielding an estimate of the gradient along that edge.
 
-    :param str sparse_format: \
-        Specifies the sparse-matrix format to be used for the output. Pass ``'csr'`` for
-        the ``scipy.sparse.csr_matrix`` format, and ``'csc'`` for the ``scipy.sparse.csc_matrix``
-        format.
+    :param sparse_array_type: \
+        A sparse array type from ``scipy.sparse`` which will be used as the returned
+        type of the matrix operator.
+
+    :return: \
+        The edge-difference matrix operator as a sparse array.
     """
     triangle_edges, edge_vertices, edge_map = build_edge_map(triangles)
     n_edges = edge_vertices.shape[0]
@@ -51,11 +57,8 @@ def edge_difference_matrix(
 
     row_inds = tile(arange(n_edges), (1, 2)).T.flatten()
     col_inds = edge_vertices.T.flatten()
-    sparse_format = sparse_format if sparse_format in ["csr", "csc"] else "csr"
-    if sparse_format == "csr":
-        return csr_matrix((entry_vals, (row_inds, col_inds)), shape=shape)
-    elif sparse_format == "csc":
-        return csc_matrix((entry_vals, (row_inds, col_inds)), shape=shape)
+
+    return sparse_array_type((entry_vals, (row_inds, col_inds)), shape=shape)
 
 
 def umbrella_matrix(
@@ -65,12 +68,12 @@ def umbrella_matrix(
     ignore_boundary=True,
     inverse_distance_weighting=True,
     normalised=False,
-    sparse_format="csr",
+    sparse_array_type=csr_array,
 ):
     """
-    returns a sparse 'umbrella' matrix operator, which finds the difference between
-    the value of every internal vertex value and the average value of the other
-    vertices with which it is connected.
+    Returns a sparse 'umbrella' matrix operator, which finds the difference between
+    the value of every internal vertex and the average value of the other
+    vertices to which it is connected.
 
     :param R: \
         The major radius of each mesh vertex as a 1D numpy array.
@@ -97,10 +100,12 @@ def umbrella_matrix(
         by the square of the mean distance between the neighbouring vertices and the central
         vertex.
 
-    :param str sparse_format: \
-        Specifies the sparse-matrix format to be used for the output. Pass ``'csr'`` for
-        the ``scipy.sparse.csr_matrix`` format, and ``'csc'`` for the ``scipy.sparse.csc_matrix``
-        format.
+    :param sparse_array_type: \
+        A sparse array type from ``scipy.sparse`` which will be used as the returned
+        type of the matrix operator.
+
+    :return: \
+        The umbrella matrix operator as a sparse array.
     """
     triangle_edges, edge_vertices, edge_map = build_edge_map(triangles)
 
@@ -143,14 +148,15 @@ def umbrella_matrix(
     entry_values = concatenate(entry_vals_list)
 
     shape = (R.size, R.size)
-    if sparse_format == "csr":
-        return csr_matrix((entry_values, (row_indices, col_indices)), shape=shape)
-    elif sparse_format == "csc":
-        return csc_matrix((entry_values, (row_indices, col_indices)), shape=shape)
+    return sparse_array_type((entry_values, (row_indices, col_indices)), shape=shape)
 
 
 def parallel_derivative(
-    R: ndarray, z: ndarray, index_grid: ndarray, order=2, sparse_format="csr"
+    R: ndarray,
+    z: ndarray,
+    index_grid: ndarray,
+    order=2,
+    sparse_array_type=csr_array,
 ):
     """
     Constructs a sparse matrix operator which estimates the derivative (with respect
@@ -170,10 +176,12 @@ def parallel_derivative(
     :param order: \
         The order of the derivative to be estimated. Must be either 1 or 2.
 
-    :param str sparse_format: \
-        Specifies the sparse-matrix format to be used for the output. Pass ``'csr'`` for
-        the ``scipy.sparse.csr_matrix`` format, and ``'csc'`` for the ``scipy.sparse.csc_matrix``
-        format.
+    :param sparse_array_type: \
+        A sparse array type from ``scipy.sparse`` which will be used as the returned
+        type of the matrix operator.
+
+    :return: \
+        The parallel derivative matrix operator as a sparse array.
     """
     shape = (3, index_grid.shape[0] * index_grid.shape[1])
     values = zeros(shape)
@@ -203,14 +211,16 @@ def parallel_derivative(
 
     shape = (R.size, R.size)
     indices = (i_indices.flatten(), j_indices.flatten())
-    if sparse_format == "csr":
-        return csr_matrix((values.flatten(), indices), shape=shape)
-    elif sparse_format == "csc":
-        return csc_matrix((values.flatten(), indices), shape=shape)
+
+    return sparse_array_type((values.flatten(), indices), shape=shape)
 
 
 def perpendicular_derivative(
-    R: ndarray, z: ndarray, index_grid: ndarray, order=2, sparse_format="csr"
+    R: ndarray,
+    z: ndarray,
+    index_grid: ndarray,
+    order=2,
+    sparse_array_type=csr_array,
 ):
     """
     Constructs a sparse matrix operator which estimates the derivative (with respect
@@ -230,10 +240,12 @@ def perpendicular_derivative(
     :param order: \
         The order of the derivative to be estimated. Must be either 1 or 2.
 
-    :param str sparse_format: \
-        Specifies the sparse-matrix format to be used for the output. Pass ``'csr'`` for
-        the ``scipy.sparse.csr_matrix`` format, and ``'csc'`` for the ``scipy.sparse.csc_matrix``
-        format.
+    :param sparse_array_type: \
+        A sparse array type from ``scipy.sparse`` which will be used as the returned
+        type of the matrix operator.
+
+    :return: \
+        The perpendicular derivative matrix operator as a sparse array.
     """
     shape = (3, index_grid.shape[0] * index_grid.shape[1])
     values = zeros(shape)
@@ -263,10 +275,7 @@ def perpendicular_derivative(
 
     shape = (R.size, R.size)
     indices = (i_indices.flatten(), j_indices.flatten())
-    if sparse_format == "csr":
-        return csr_matrix((values.flatten(), indices), shape=shape)
-    elif sparse_format == "csc":
-        return csc_matrix((values.flatten(), indices), shape=shape)
+    return sparse_array_type((values.flatten(), indices), shape=shape)
 
 
 def get_fd_coeffs(points, order=1):
