@@ -1,13 +1,13 @@
 from numpy import linspace, array, zeros, sqrt, sinc
-from scipy.sparse import csc_matrix
 from numpy.random import multivariate_normal
 from scipy.integrate import simps
 import matplotlib.pyplot as plt
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
-from tokamesh.geometry import BarycentricGeometryMatrix
+from tokamesh.geometry import calculate_geometry_matrix
 from tokamesh.utilities import Camera
+
 
 """
 This script demonstrates that line-integrals over rays through a field
@@ -50,18 +50,17 @@ cam = Camera(
 )
 
 # calculate the geometry matrix data
-BGM = BarycentricGeometryMatrix(
-    R=R, z=z, triangles=triangles, ray_origins=cam.ray_starts, ray_ends=cam.ray_ends
+geomat = calculate_geometry_matrix(
+    R=R,
+    z=z,
+    triangles=triangles,
+    ray_origins=cam.ray_starts,
+    ray_ends=cam.ray_ends,
+    n_processes=2,
 )
 
-matrix_data = BGM.calculate()
-
-# extract the data and build a sparse matrix
-entry_values = matrix_data["entry_values"]
-row_values = matrix_data["row_indices"]
-col_values = matrix_data["col_indices"]
-shape = matrix_data["shape"]
-G = csc_matrix((entry_values, (row_values, col_values)), shape=shape)
+# create a sparse array instance of the geometry matrix
+G = geomat.build_sparse_array()
 
 # get the geometry matrix prediction of the line-integrals
 matrix_integrals = G @ field
@@ -81,7 +80,7 @@ for i in range(R_projection.shape[1]):
 
 # plot the results
 fig = plt.figure(figsize=(12, 6))
-ax1 = fig.add_subplot(211)
+ax1 = fig.add_subplot(2, 1, 1)
 ax1.plot(direct_integrals, "-", label="brute-force result", c="red")
 ax1.plot(
     matrix_integrals,
@@ -100,7 +99,7 @@ ax1.legend()
 
 abs_frac_diff = abs(matrix_integrals / direct_integrals - 1)
 mean_afd = abs_frac_diff.mean()
-ax2 = fig.add_subplot(212)
+ax2 = fig.add_subplot(2, 1, 2)
 ax2.plot(abs_frac_diff, c="green", alpha=0.5)
 ax2.plot(abs_frac_diff, ".", c="green", markersize=4)
 ax2.plot(
@@ -109,7 +108,7 @@ ax2.plot(
     ls="dashed",
     c="red",
     lw=2,
-    label="{:.3%} mean absolute fractional difference".format(mean_afd),
+    label=f"{mean_afd:.3%} mean absolute fractional difference",
 )
 ax2.set_ylim([1e-5, 1e-2])
 ax2.set_yscale("log")
