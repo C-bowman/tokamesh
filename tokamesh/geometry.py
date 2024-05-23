@@ -1,6 +1,6 @@
 from numpy import sqrt, log
 from numpy import absolute, nan, isfinite, minimum, maximum, isnan
-from numpy import array, full, zeros, stack, savez, concatenate
+from numpy import array, full, zeros, stack, savez, concatenate, load
 from numpy import ndarray, finfo
 from scipy.sparse import csc_array
 from collections import defaultdict
@@ -64,6 +64,12 @@ class GeometryMatrix:
         )
 
     def save(self, filename: str):
+        """
+        Save the geometry matrix data in the numpy ``.npz`` format.
+        
+        :param filename: \
+            The filename to which the geometry matrix data is saved.
+        """
         savez(
             filename,
             entry_values=self.entry_values,
@@ -73,6 +79,28 @@ class GeometryMatrix:
             R_vertices=self.R_vertices,
             z_vertices=self.z_vertices,
             triangle_vertices=self.triangle_vertices,
+        )
+
+    @classmethod
+    def load(cls, filename: str):
+        """
+        Load and return a saved ``GeometryMatrix`` instance from file.
+
+        :param filename: \
+            The filename of the saved geometry matrix data.
+
+        :return: \
+            The loaded data as a ``GeometryMatrix`` instance.
+        """
+        data = load(filename)
+        return cls(
+            entry_values=data["entry_values"],
+            row_indices=data["row_indices"],
+            col_indices=data["col_indices"],
+            matrix_shape=data["matrix_shape"],
+            R_vertices=data["R_vertices"],
+            z_vertices=data["z_vertices"],
+            triangle_vertices=data["triangle_vertices"],
         )
 
 

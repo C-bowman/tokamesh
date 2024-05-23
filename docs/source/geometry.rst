@@ -11,4 +11,4 @@ Example code for geometry matrix calculation can be found in the
 
 
 .. autoclass:: tokamesh.geometry.GeometryMatrix
-   :members: build_sparse_array, save, entry_values, row_indices, col_indices, matrix_shape, R_vertices, z_vertices, triangle_vertices
+   :members: build_sparse_array, save, load, entry_values, row_indices, col_indices, matrix_shape, R_vertices, z_vertices, triangle_vertices
