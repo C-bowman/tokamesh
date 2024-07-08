@@ -5,9 +5,15 @@ from tokamesh.operators import edge_difference_matrix, umbrella_matrix
 
 
 def single_hexagon_mesh(scale=1.0):
-    a = 0.5*sqrt(3)
+    a = 0.5 * sqrt(3)
     unit_hexagon = [
-        (0., 0.), (0., 1.), (a, 0.5), (a, -0.5), (0., -1), (-a, -0.5), (-a, 0.5)
+        (0.0, 0.0),
+        (0.0, 1.0),
+        (a, 0.5),
+        (a, -0.5),
+        (0.0, -1),
+        (-a, -0.5),
+        (-a, 0.5),
     ]
     triangles = array([[0, i, i % 6 + 1] for i in range(1, 7)])
     R, z = [array([p[i] for p in unit_hexagon]) for i in [0, 1]]
@@ -32,7 +38,7 @@ def test_edge_difference_matrix():
 def test_umbrella_matrix():
     R, z, triangles = single_hexagon_mesh(scale=2.0)
     # making vertex values lie in a plane should make umbrella matrix return zeros
-    vertex_vals = R*1.7 - z*0.4
+    vertex_vals = R * 1.7 - z * 0.4
     operator = umbrella_matrix(R=R, z=z, triangles=triangles)
 
     diffs = operator @ vertex_vals
@@ -45,7 +51,9 @@ def test_umbrella_matrix():
     z = rng.normal(loc=z, scale=0.2)
     vertex_vals = R * 1.7 - z * 0.4
 
-    weighted_operator = umbrella_matrix(R=R, z=z, triangles=triangles, inverse_distance_weighting=True)
+    weighted_operator = umbrella_matrix(
+        R=R, z=z, triangles=triangles, inverse_distance_weighting=True
+    )
     diffs = operator @ vertex_vals
     weighted_diffs = weighted_operator @ vertex_vals
     assert abs(diffs[0]) > abs(weighted_diffs[0])
