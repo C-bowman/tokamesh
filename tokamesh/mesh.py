@@ -1,4 +1,4 @@
-from numpy import stack, log2, floor, unique, atleast_1d
+from numpy import stack, log2, floor, unique, atleast_1d, ptp
 from numpy import linspace, int64, full, zeros, meshgrid, ndarray
 from numpy import savez, load
 from itertools import product
@@ -105,8 +105,8 @@ class TriangularMesh:
         # grid cell and all triangles which intersect it.
 
         # find an appropriate depth for each tree
-        R_extent = self.R[self.triangle_vertices].ptp(axis=1).mean()
-        z_extent = self.z[self.triangle_vertices].ptp(axis=1).mean()
+        R_extent = ptp(self.R[self.triangle_vertices], axis=1).mean()
+        z_extent = ptp(self.z[self.triangle_vertices], axis=1).mean()
         R_depth = max(
             int(floor(log2((self.R_limits[1] - self.R_limits[0]) / R_extent))), 2
         )
@@ -269,9 +269,9 @@ class TriangularMesh:
             triangle_indices.resize(input_shape)
         return triangle_indices
 
-    def grid_lookup(self, R, z):
+    def grid_lookup(self, R: ndarray, z: ndarray):
         # first determine in which cell each point lies using the binary trees
-        grid_coords = zeros([R.size, 2], dtype=int64)
+        grid_coords = zeros([R.size, 2], dtype=int)
         grid_coords[:, 0] = self.R_tree.lookup_index(R)
         grid_coords[:, 1] = self.z_tree.lookup_index(z)
         # find the set of unique grid coordinates
@@ -280,7 +280,7 @@ class TriangularMesh:
         )
         # now create an array of indices which are ordered according
         # to which of the unique values they match
-        indices = inverse.argsort()
+        indices = inverse.squeeze().argsort()
         # build a list of slice objects which addresses those indices
         # which match each unique coordinate
         ranges = counts.cumsum()

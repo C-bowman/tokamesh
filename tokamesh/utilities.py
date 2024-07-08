@@ -1,6 +1,6 @@
 from collections import defaultdict
 from numpy import linspace, full, int64, arange, searchsorted, ndarray, zeros
-from numpy import pi, sqrt, dot, array, cross, identity, tan
+from numpy import pi, sqrt, dot, array, cross, identity, tan, ptp
 from itertools import chain, count
 
 
@@ -195,7 +195,7 @@ def batch_builder(n_tasks: int, n_batches: int) -> list[slice]:
 def partition_longest(
     R: ndarray, z: ndarray, indices: ndarray, partitions: int
 ) -> list[tuple]:
-    ordering = R.argsort() if R.ptp() > z.ptp() else z.argsort()
+    ordering = R.argsort() if ptp(R) > ptp(z) else z.argsort()
     slices = batch_builder(n_tasks=R.size, n_batches=partitions)
     decomp = []
     for s in slices:

@@ -47,8 +47,8 @@ def edge_difference_matrix(
     entry_vals = ones(2 * n_edges)
 
     if normalised:
-        dR = diff(R[edge_vertices], axis=1)
-        dz = diff(z[edge_vertices], axis=1)
+        dR = diff(R[edge_vertices], axis=1).squeeze()
+        dz = diff(z[edge_vertices], axis=1).squeeze()
         inv_distances = 1.0 / sqrt(dR**2 + dz**2)
         entry_vals[0::2] = inv_distances
         entry_vals[1::2] = -inv_distances
