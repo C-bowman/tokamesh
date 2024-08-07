@@ -14,7 +14,7 @@ class BinaryTree:
     :param limits: tuple of the lower and upper bounds of the look-up region.
     """
 
-    def __init__(self, layers: int, limits: tuple):
+    def __init__(self, layers: int, limits: tuple[float, float]):
         self.layers = layers
         self.nodes = 2**self.layers
         self.lims = limits
@@ -24,7 +24,7 @@ class BinaryTree:
         self.indices = full(self.nodes + 2, fill_value=-1, dtype=int64)
         self.indices[1:-1] = arange(self.nodes)
 
-    def lookup_index(self, values):
+    def lookup_index(self, values: ndarray) -> ndarray:
         return self.indices[searchsorted(self.edges, values)]
 
 

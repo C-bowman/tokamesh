@@ -7,15 +7,15 @@ from warnings import warn
 from tokamesh.utilities import build_edge_map, map_edge_connections
 
 MeshData = tuple[ndarray, ndarray, ndarray]
-floatpair = tuple[float, float]
+FloatPair = tuple[float, float]
 
 
 def equilateral_mesh(
-    R_range: floatpair,
-    z_range: floatpair,
+    R_range: FloatPair,
+    z_range: FloatPair,
     resolution: float,
     rotation: float = None,
-    pivot: floatpair = (0.0, 0.0),
+    pivot: FloatPair = (0.0, 0.0),
 ) -> MeshData:
     """
     Construct a mesh from equilateral triangles which fills a rectangular region.
@@ -82,7 +82,7 @@ def equilateral_mesh(
     return x.flatten(), y.flatten(), array(triangle_inds)
 
 
-def rotate(R, z, angle, pivot):
+def rotate(R: ndarray, z: ndarray, angle: float, pivot: FloatPair):
     """Rotate the point `(R, z)` anti-clockwise by `angle` about the point `pivot`"""
     d = sqrt((R - pivot[0]) ** 2 + (z - pivot[1]) ** 2)
     theta = arctan2(z - pivot[1], R - pivot[0]) + angle

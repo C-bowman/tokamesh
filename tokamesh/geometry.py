@@ -321,7 +321,7 @@ class GeometryCalculator:
         # intersection calculation for horizontal edges.
         self.min_z_component = 1e-12
 
-    def calculate(self, save_file=None) -> dict:
+    def calculate(self, save_file=None) -> dict[str, ndarray]:
         """
         Calculate the geometry matrix.
 
@@ -413,7 +413,9 @@ class GeometryCalculator:
         rgn_D = (~R_check).all(axis=0)
         return ~(rgn_A | rgn_B | rgn_C | rgn_D)
 
-    def edge_hyperbola_intersections(self, R0, z0, uR, uz, w):
+    def edge_hyperbola_intersections(
+        self, R0: float, z0: float, uR: float, uz: float, w: float
+    ) -> ndarray:
         u_ratio = uR / uz
         alpha = R0 + (self.pixels[:, 2] - z0) * u_ratio
         beta = self.rays[:, 2] * u_ratio
@@ -425,14 +427,14 @@ class GeometryCalculator:
 
         # use the discriminant to check for the existence of the roots
         D = b**2 - 4 * a * c
-        i = (D >= 0).nonzero()
+        real_roots = (D >= 0).nonzero()
 
         # where roots exists, calculate them
         intersections = full([self.n_rays, 2], nan)
-        sqrt_D = sqrt(D[i])
-        twice_a = 2 * a[i]
-        intersections[i, 0] = -(b[i] + sqrt_D) / twice_a
-        intersections[i, 1] = -(b[i] - sqrt_D) / twice_a
+        sqrt_D = sqrt(D[real_roots])
+        twice_a = 2 * a[real_roots]
+        intersections[real_roots, 0] = -(b[real_roots] + sqrt_D) / twice_a
+        intersections[real_roots, 1] = -(b[real_roots] - sqrt_D) / twice_a
 
         # convert the ray-distances of the intersections to side-displacements
         side_displacements = (
@@ -443,7 +445,13 @@ class GeometryCalculator:
         intersections[invalid_intersections] = nan
         return intersections
 
-    def horizontal_hyperbola_intersections(self, R0, z0, uR, uz, w):
+    def horizontal_hyperbola_intersections(
+        self, R0: float, z0: float, uR: float, uz: float, w: float
+    ) -> ndarray:
+        """
+        Numerically stable calculation of edge-hyperbola intersections for the special
+        case where the edge is almost exactly horizontal.
+        """
         # find the intersections
         intersections = (z0 - self.pixels[:, 2]) / self.rays[:, 2]
         # convert the ray-distances of the intersections to side-displacements
@@ -533,7 +541,9 @@ class GeometryCalculator:
                 vertex_ind=v3, ray_indices=indices, integral_vals=L3_int
             )
 
-    def barycentric_coord_integral(self, l1, l2, inds, tri_index: int):
+    def barycentric_coord_integral(
+        self, l1: ndarray, l2: ndarray, inds: ndarray[int], tri_index: int
+    ) -> tuple[ndarray, ndarray, ndarray]:
         l1_slice = l1[inds]
         l2_slice = l2[inds]
         dl = l2_slice - l1_slice
@@ -563,12 +573,19 @@ class GeometryCalculator:
         return lam1_int, lam2_int, lam3_int
 
     @staticmethod
-    def check_geometry_data(R, z, triangle_inds, ray_starts, ray_ends):
+    def check_geometry_data(
+        R: ndarray,
+        z: ndarray,
+        triangle_inds: ndarray,
+        ray_starts: ndarray,
+        ray_ends: ndarray,
+    ):
         """
         Check that all the data have the correct shapes / types
         """
         if not all(
-            type(arg) is ndarray for arg in [R, z, triangle_inds, ray_starts, ray_ends]
+            isinstance(arg, ndarray)
+            for arg in [R, z, triangle_inds, ray_starts, ray_ends]
         ):
             raise TypeError(
                 """\n\n

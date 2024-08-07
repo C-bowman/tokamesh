@@ -28,11 +28,11 @@ class TriangularMesh:
             if not isinstance(obj, ndarray):
                 raise TypeError(
                     f"""\n
-                    [ TriangularMesh error ]
-                    >> The '{name}' argument of TriangularMesh should have type:
-                    >> {ndarray}
-                    >> but instead has type:
-                    >> {type(obj)}
+                    \r[ TriangularMesh error ]
+                    \r>> The '{name}' argument of TriangularMesh should have type:
+                    \r>> {ndarray}
+                    \r>> but instead has type:
+                    \r>> {type(obj)}
                     """
                 )
 
@@ -40,27 +40,27 @@ class TriangularMesh:
             if obj.squeeze().ndim > 1:
                 raise ValueError(
                     f"""\n
-                    [ TriangularMesh error ]
-                    >> The '{name}' argument of TriangularMesh should be
-                    >> a 1D array, but given array has shape {obj.shape}.
+                    \r[ TriangularMesh error ]
+                    \r>> The '{name}' argument of TriangularMesh should be
+                    \r>> a 1D array, but given array has shape {obj.shape}.
                     """
                 )
 
         if R.size != z.size:
             raise ValueError(
                 f"""\n
-                [ TriangularMesh error ]
-                >> The 'R' and 'z' arguments of TriangularMesh should be
-                >> of equal size, but given arrays have sizes {R.size} and {z.size}.
+                \r[ TriangularMesh error ]
+                \r>> The 'R' and 'z' arguments of TriangularMesh should be
+                \r>> of equal size, but given arrays have sizes {R.size} and {z.size}.
                 """
             )
 
         if triangles.squeeze().ndim != 2 or triangles.squeeze().shape[1] != 3:
             raise ValueError(
                 f"""\n
-                [ TriangularMesh error ]
-                >> The 'triangles' argument must have shape (num_triangles, 3)
-                >> but given array has shape {triangles.shape}.
+                \r[ TriangularMesh error ]
+                \r>> The 'triangles' argument must have shape (num_triangles, 3)
+                \r>> but given array has shape {triangles.shape}.
                 """
             )
 
@@ -157,19 +157,19 @@ class TriangularMesh:
         if type(vertex_values) is not ndarray or vertex_values.ndim != 1:
             raise TypeError(
                 """\n
-                [ TriangularMesh error ]
-                >> The 'vertex_values' argument of the TriangularMesh.interpolate
-                >> method must have type numpy.ndarray, and have only one dimension.
+                \r[ TriangularMesh error ]
+                \r>> The 'vertex_values' argument of the TriangularMesh.interpolate
+                \r>> method must have type numpy.ndarray, and have only one dimension.
                 """
             )
 
         if vertex_values.size != self.n_vertices:
             raise ValueError(
                 f"""\n
-                [ TriangularMesh error ]
-                >> The size of the 'vertex_values' argument of TriangularMesh.interpolate
-                >> must be equal to the number of mesh vertices.
-                >> The mesh has {self.n_vertices} vertices but given array is of size {vertex_values.size}.
+                \r[ TriangularMesh error ]
+                \r>> The size of the 'vertex_values' argument of TriangularMesh.interpolate
+                \r>> must be equal to the number of mesh vertices.
+                \r>> The mesh has {self.n_vertices} vertices but given array is of size {vertex_values.size}.
                 """
             )
 
@@ -179,10 +179,10 @@ class TriangularMesh:
         if R_vals.shape != z_vals.shape:
             raise ValueError(
                 f"""\n
-                [ TriangularMesh error ]
-                >> The 'R' and 'z' arguments of TriangularMesh.interpolate
-                >> have inconsistent shapes:
-                >> {R_vals.shape} != {z_vals.shape}
+                \r[ TriangularMesh error ]
+                \r>> The 'R' and 'z' arguments of TriangularMesh.interpolate
+                \r>> have inconsistent shapes:
+                \r>> {R_vals.shape} != {z_vals.shape}
                 """
             )
 
@@ -236,10 +236,10 @@ class TriangularMesh:
         if R_vals.shape != z_vals.shape:
             raise ValueError(
                 f"""\n
-                [ TriangularMesh error ]
-                >> The 'R' and 'z' arguments of TriangularMesh.find_triangle
-                >> have inconsistent shapes:
-                >> {R_vals.shape} != {z_vals.shape}
+                \r[ TriangularMesh error ]
+                \r>> The 'R' and 'z' arguments of TriangularMesh.find_triangle
+                \r>> have inconsistent shapes:
+                \r>> {R_vals.shape} != {z_vals.shape}
                 """
             )
 
@@ -426,11 +426,11 @@ class TriangularMesh:
         if R_vals.ndim != 1 or z_vals.ndim != 1 or R_vals.size != z_vals.size:
             raise ValueError(
                 f"""\n
-                [ TriangularMesh error ]
-                >> The 'R' and 'z' arguments of build_interpolator_matrix
-                >> must be 1D arrays of equal size, however their shapes are
-                >> {R_vals.shape}, {z_vals.shape}
-                >> respectively.
+                \r[ TriangularMesh error ]
+                \r>> The 'R' and 'z' arguments of build_interpolator_matrix
+                \r>> must be 1D arrays of equal size, however their shapes are
+                \r>> {R_vals.shape}, {z_vals.shape}
+                \r>> respectively.
                 """
             )
 

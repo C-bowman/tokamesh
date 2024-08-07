@@ -1,6 +1,6 @@
 from numpy import arange, array, concatenate, full, ones, tile, ndarray, zeros
 from numpy import sqrt, diff
-from scipy.sparse import csr_array
+from scipy.sparse import csr_array, sparray
 from scipy.special import factorial
 from scipy.linalg import solve
 from itertools import product
@@ -13,7 +13,7 @@ def edge_difference_matrix(
     triangles: ndarray,
     normalised=False,
     sparse_array_type=csr_array,
-):
+) -> sparray:
     """
     Generates a sparse matrix which, when operating on a vector of field
     values at each vertex, produces a vector of the differences in those
@@ -69,7 +69,7 @@ def umbrella_matrix(
     inverse_distance_weighting=True,
     normalised=False,
     sparse_array_type=csr_array,
-):
+) -> sparray:
     """
     Returns a sparse 'umbrella' matrix operator, which finds the difference between
     the value of every internal vertex and the average value of the other
@@ -157,7 +157,7 @@ def parallel_derivative(
     index_grid: ndarray,
     order=2,
     sparse_array_type=csr_array,
-):
+) -> sparray:
     """
     Constructs a sparse matrix operator which estimates the derivative (with respect
     to poloidal distance) of a given set of field values at each vertex in direction
@@ -221,7 +221,7 @@ def perpendicular_derivative(
     index_grid: ndarray,
     order=2,
     sparse_array_type=csr_array,
-):
+) -> sparray:
     """
     Constructs a sparse matrix operator which estimates the derivative (with respect
     to poloidal distance) of a given set of field values at each vertex in direction
