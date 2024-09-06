@@ -68,19 +68,17 @@ def test_polygon_is_inside():
     # create a non-convex polygon
     x = np.array([1.0, 1.0, 3.0, 3.0, 2.5])
     y = np.array([1.0, 1.5, 2.0, 0.0, 1.25])
-    P = Polygon(x=x, y=y)
+    poly = Polygon(x=x, y=y)
 
     # first check points which should be inside
-    assert P.is_inside([2.75, 1.0]) is True
-    assert P.is_inside([2.0, 1.25]) is True
-    assert P.is_inside([2.75, 1.25]) is True
-    assert P.is_inside([2.5, 1.5]) is True
+    x_inside = np.array([2.75, 2.0, 2.75, 2.5])
+    y_inside = np.array([1.0, 1.25, 1.25, 1.5])
+    assert poly.is_inside(x=x_inside, y=y_inside).all()
 
     # now check points which should be outside
-    assert P.is_inside([2.0, 1.0]) is False
-    assert P.is_inside([0.0, 1.0]) is False
-    assert P.is_inside([3.0, 3.0]) is False
-    assert P.is_inside([2.0, 2.0]) is False
+    x_outside = np.array([2.0, 0.0, 3.0, 2.0])
+    y_outside = np.array([1.0, 1.0, 3.0, 2.0])
+    assert not poly.is_inside(x=x_outside, y=y_outside).any()
 
 
 def test_polygon_distance():
@@ -88,19 +86,34 @@ def test_polygon_distance():
     y = np.array([0.0, 0.0, 1.0, 1.0])
     square = Polygon(x=x, y=y)
 
-    assert np.isclose(square.distance((2.0, 0.5)), 1.0)
-    assert np.isclose(square.distance((0.5, 2.0)), 1.0)
-    assert np.isclose(square.distance((-1.0, 0.5)), 1.0)
-    assert np.isclose(square.distance((0.5, -1.0)), 1.0)
-    assert np.isclose(square.distance((0.5, 0.5)), 0.5)
-    assert np.isclose(square.distance((2.0, 2.0)), np.sqrt(2.0))
+    x_points = np.array([2.0, 0.5, -1.0, 0.5, 0.5, 2.0])
+    y_points = np.array([0.5, 2.0, 0.5, -1.0, 0.5, 2.0])
+    distances = np.array([1.0, 1.0, 1.0, 1.0, 0.5, np.sqrt(2.0)])
+    assert np.isclose(square.distance(x=x_points, y=y_points), distances).all()
 
     height = np.sqrt(3.0) / 2.0
-    triangle = Polygon([0.0, 1.0, 0.5], [0.0, 0.0, height])
+    triangle = Polygon(x=np.array([0.0, 1.0, 0.5]), y=np.array([0.0, 0.0, height]))
 
-    assert np.isclose(triangle.distance([1.5, height]), height)
-    assert np.isclose(triangle.distance([-0.5, height]), height)
-    assert np.isclose(triangle.distance([0.5, -height]), height)
+    assert np.isclose(triangle.distance(1.5, height), height)
+    assert np.isclose(triangle.distance(-0.5, height), height)
+    assert np.isclose(triangle.distance(0.5, -height), height)
+
+
+def test_polygon_validation():
+    with pytest.raises(ValueError):
+        x = np.array([0.0, 1.0, 1.0])
+        y = np.array([0.0, 0.0, 1.0, 1.0])
+        square = Polygon(x=x, y=y)
+
+    with pytest.raises(ValueError):
+        x = np.array([0.0, 1.0, 1.0, 0.0]).reshape([4, 1])
+        y = np.array([0.0, 0.0, 1.0, 1.0])
+        square = Polygon(x=x, y=y)
+
+    with pytest.raises(ValueError):
+        x = np.array([0.0, 1.0])
+        y = np.array([0.0, 0.0])
+        square = Polygon(x=x, y=y)
 
 
 @pytest.mark.parametrize(
