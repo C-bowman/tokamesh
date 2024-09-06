@@ -141,11 +141,31 @@ class Polygon:
     def __init__(self, x: ndarray, y: ndarray):
         self.x = array(x)
         self.y = array(y)
+
+        if self.x.ndim != 1 or self.y.ndim != 1 or self.x.size != self.y.size:
+            raise ValueError(
+                f"""\n
+                \r[ Polygon error ]
+                \r>> The given 'x' and 'y' arguments should be 1D arrays
+                \r>> of equal size, but have shapes:
+                \r>> {self.x.shape} and {self.y.shape}
+                \r>> respectively.
+                """
+            )
+
+        if self.x.size < 3:
+            raise ValueError(
+                f"""\n
+                \r[ Polygon error ]
+                \r>> The given 'x' and 'y' arguments must specify at least
+                \r>> 3 vertices to form a valid polygon, but only {self.x.size}
+                \r>> were given.
+                """
+            )
+
         if (self.x[0] != self.x[-1]) or (self.y[0] != self.y[-1]):
             self.x = concatenate([self.x, atleast_1d(self.x[0])])
             self.y = concatenate([self.y, atleast_1d(self.y[0])])
-
-        self.n = self.x.size
 
         # pre-calculate the bounding rectangle of each edge for intersection testing
         self.x_upr = maximum(self.x[1:], self.x[:-1])

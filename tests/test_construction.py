@@ -101,6 +101,23 @@ def test_polygon_distance():
     assert np.isclose(triangle.distance(0.5, -height), height)
 
 
+def test_polygon_validation():
+    with pytest.raises(ValueError):
+        x = np.array([0.0, 1.0, 1.0])
+        y = np.array([0.0, 0.0, 1.0, 1.0])
+        square = Polygon(x=x, y=y)
+
+    with pytest.raises(ValueError):
+        x = np.array([0.0, 1.0, 1.0, 0.0]).reshape([4, 1])
+        y = np.array([0.0, 0.0, 1.0, 1.0])
+        square = Polygon(x=x, y=y)
+
+    with pytest.raises(ValueError):
+        x = np.array([0.0, 1.0])
+        y = np.array([0.0, 0.0])
+        square = Polygon(x=x, y=y)
+
+
 @pytest.mark.parametrize(
     "R, z, angle, pivot, expected",
     [
