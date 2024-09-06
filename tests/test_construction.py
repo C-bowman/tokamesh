@@ -92,9 +92,7 @@ def test_polygon_distance():
     assert np.isclose(square.distance(x=x_points, y=y_points), distances).all()
 
     height = np.sqrt(3.0) / 2.0
-    triangle = Polygon(
-        x=np.array([0.0, 1.0, 0.5]), y=np.array([0.0, 0.0, height])
-    )
+    triangle = Polygon(x=np.array([0.0, 1.0, 0.5]), y=np.array([0.0, 0.0, height]))
 
     assert np.isclose(triangle.distance(1.5, height), height)
     assert np.isclose(triangle.distance(-0.5, height), height)
