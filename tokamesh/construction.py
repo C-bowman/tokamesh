@@ -189,6 +189,19 @@ class Polygon:
         self.const = self.x[:-1] - self.y[:-1] * self.coeff
 
     def is_inside(self, x: ndarray, y: ndarray) -> ndarray[bool]:
+        """
+        Checks whether given points are inside the polygon.
+
+        :param x: \
+            The x-values of the points to check as a 1D ``numpy.ndarray``.
+
+        :param y: \
+            The y-values of the points to check as a 1D ``numpy.ndarray``.
+
+        :return: \
+            A 1D ``numpy.ndarray`` of booleans specifying whether each of the
+            given points is inside the polygon or not.
+        """
         x = atleast_1d(x)
         y = atleast_1d(y)
         edge_x = y[:, None] * self.coeff[None, :] + self.const[None, :]
@@ -203,6 +216,21 @@ class Polygon:
         return intersections % 2 == 1
 
     def distance(self, x: ndarray, y: ndarray) -> ndarray[float]:
+        """
+        Calculates the distance between given points and the closest point on the polygon.
+
+        :param x: \
+            The x-values of the points for which the distance is calculated
+            as a 1D ``numpy.ndarray``.
+
+        :param y: \
+            The y-values of the points for which the distance is calculated
+            as a 1D ``numpy.ndarray``.
+
+        :return: \
+            The distance between the given points and the closest point on the polygon
+            as a 1D ``numpy.ndarray``.
+        """
         x = atleast_1d(x)
         y = atleast_1d(y)
         dx = self.x[None, :-1] - x[:, None]
