@@ -1,6 +1,6 @@
 from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum, cumsum
 from numpy import array, ones, zeros, full, linspace, arange, concatenate, vstack
-from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d
+from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d, meshgrid
 from numpy import int64, ndarray
 from warnings import warn
 
@@ -138,26 +138,14 @@ class Polygon:
         The y-values of the polygon vertices as a 1D numpy array.
     """
 
-    def __init__(self, x, y):
+    def __init__(self, x: ndarray, y: ndarray):
         self.x = array(x)
         self.y = array(y)
         if (self.x[0] != self.x[-1]) or (self.y[0] != self.y[-1]):
             self.x = concatenate([self.x, atleast_1d(self.x[0])])
             self.y = concatenate([self.y, atleast_1d(self.y[0])])
 
-        self.n = len(x)
-
-        self.dx = diff(self.x)
-        self.dy = diff(self.y)
-        self.im = full(self.dx.size, fill_value=nan)
-        self.c = full(self.dx.size, fill_value=nan)
-        im_inds = (self.dy != 0.0).nonzero()[0]
-        c_inds = (self.dx != 0.0).nonzero()[0]
-        self.im[im_inds] = self.dx[im_inds] / self.dy[im_inds]
-        self.c[c_inds] = (
-            self.y[:-1][c_inds]
-            - self.x[:-1][c_inds] * self.dy[c_inds] / self.dx[c_inds]
-        )
+        self.n = self.x.size
 
         # pre-calculate the bounding rectangle of each edge for intersection testing
         self.x_upr = maximum(self.x[1:], self.x[:-1])
@@ -165,73 +153,81 @@ class Polygon:
         self.y_upr = maximum(self.y[1:], self.y[:-1])
         self.y_lwr = minimum(self.y[1:], self.y[:-1])
 
-        # normalise the unit vectors
-        self.lengths = sqrt(self.dx**2 + self.dy**2)
-        self.dx /= self.lengths
-        self.dy /= self.lengths
+        # get direction vector elements for each edge
+        self.u_x = diff(self.x)
+        self.u_y = diff(self.y)
+        # coefficients to calculate minimum distance to the line of each edge
+        length_sqr = self.u_x**2 + self.u_y**2
+        self.k_x = -self.u_x / length_sqr
+        self.k_y = -self.u_y / length_sqr
+        # coefficients to calculate intersections
+        self.coeff = full(self.u_x.size, fill_value=nan)
+        self.not_horizontal = self.u_y != 0.0
+        self.coeff[self.not_horizontal] = (
+            self.u_x[self.not_horizontal] / self.u_y[self.not_horizontal]
+        )
+        self.const = self.x[:-1] - self.y[:-1] * self.coeff
 
-        self.zero_im = self.im == 0.0
+    def is_inside(self, x: ndarray, y: ndarray) -> ndarray[bool]:
+        x = atleast_1d(x)
+        y = atleast_1d(y)
+        edge_x = y[:, None] * self.coeff[None, :] + self.const[None, :]
+        limits_check = (
+            (self.y_lwr[None, :] < y[:, None])
+            & (y[:, None] < self.y_upr[None, :])
+            & (x[:, None] < self.x_upr[None, :])
+        )
 
-    def is_inside(self, v):
-        x, y = v
-        k = (y - self.c) * self.im
+        isec_check = (x[:, None] < edge_x) & self.not_horizontal[None, :]
+        intersections = (limits_check & isec_check).sum(axis=1)
+        return intersections % 2 == 1
 
-        limits_check = (self.y_lwr < y) & (y < self.y_upr) & (x < self.x_upr)
-        isec_check = (x < k) | self.zero_im
-        intersections = (limits_check & isec_check).sum()
-        return True if intersections % 2 == 1 else False
-
-    def distance(self, v):
-        x, y = v
-        dx = x - self.x[:-1]
-        dy = y - self.y[:-1]
-
-        L = (dx * self.dx + dy * self.dy) / self.lengths
-        D = dx * self.dy - dy * self.dx
-        booles = (0 <= L) & (L <= 1)
-
-        points_min = sqrt(dx**2 + dy**2).min()
-
-        if booles.any():
-            perp_min = abs(D[booles]).min()
-            return min(perp_min, points_min)
-        else:
-            return points_min
+    def distance(self, x: ndarray, y: ndarray) -> ndarray[float]:
+        x = atleast_1d(x)
+        y = atleast_1d(y)
+        dx = self.x[None, :-1] - x[:, None]
+        dy = self.y[None, :-1] - y[:, None]
+        # find the distance (normalised to the edge length) along the line
+        # of the edge which minimises the distance to the point
+        L = dx * self.k_x[None, :] + dy * self.k_y[None, :]
+        # clip this distance so it stays within the edge
+        L = L.clip(0.0, 1.0)
+        # calculate the minimum distance to each edge, then return the minimum
+        # distance across all edges
+        dist_sqr = (dx + L * self.u_x[None, :]) ** 2 + (dy + L * self.u_y[None, :]) ** 2
+        return sqrt(dist_sqr.min(axis=1))
 
     def diagnostic_plot(self):
-        xmin = self.x.min()
-        xmax = self.x.max()
-        ymin = self.y.min()
-        ymax = self.y.max()
+        xmin, xmax = self.x.min(), self.x.max()
+        ymin, ymax = self.y.min(), self.y.max()
         xpad = (xmax - xmin) * 0.15
         ypad = (ymax - ymin) * 0.15
 
-        N = 200
+        N = 128
         x_ax = linspace(xmin - xpad, xmax + xpad, N)
         y_ax = linspace(ymin - ypad, ymax + ypad, N)
+        x_mesh, y_mesh = meshgrid(x_ax, y_ax, indexing="ij")
 
-        inside = zeros([N, N])
-        distance = zeros([N, N])
-        for i in range(N):
-            for j in range(N):
-                v = [x_ax[i], y_ax[j]]
-                inside[i, j] = self.is_inside(v)
-                distance[i, j] = self.distance(v)
+        inside = self.is_inside(x_mesh.flatten(), y_mesh.flatten())
+        distance = self.distance(x_mesh.flatten(), y_mesh.flatten())
+
+        inside.resize(x_mesh.shape)
+        distance.resize(x_mesh.shape)
 
         import matplotlib.pyplot as plt
 
         fig = plt.figure(figsize=(12, 4))
-        ax1 = fig.add_subplot(131)
+        ax1 = fig.add_subplot(1, 3, 1)
         ax1.contourf(x_ax, y_ax, inside.T)
         ax1.plot(self.x, self.y, ".-", c="white", lw=2)
         ax1.set_title("point is inside polygon")
 
-        ax2 = fig.add_subplot(132)
+        ax2 = fig.add_subplot(1, 3, 2)
         ax2.contourf(x_ax, y_ax, distance.T, 100)
         ax2.plot(self.x, self.y, ".-", c="white", lw=2)
         ax2.set_title("distance from polygon")
 
-        ax3 = fig.add_subplot(133)
+        ax3 = fig.add_subplot(1, 3, 3)
         ax3.contourf(x_ax, y_ax, (distance * inside).T, 100)
         ax3.plot(self.x, self.y, ".-", c="white", lw=2)
         ax3.set_title("interior point distance from polygon")
@@ -358,22 +354,15 @@ def build_central_mesh(
             R_range=R_range, z_range=z_range, resolution=resolution
         )
     else:
-        rot_R, rot_z = rotate(R_boundary, z_boundary, -rotation, [0.0, 0.0])
+        rot_R, rot_z = rotate(R_boundary, z_boundary, -rotation, (0.0, 0.0))
         R_range = (rot_R.min() - pad, rot_R.max() + pad)
         z_range = (rot_z.min() - pad, rot_z.max() + pad)
         R, z, triangles = equilateral_mesh(
             R_range=R_range, z_range=z_range, resolution=resolution
         )
-        R, z = rotate(R, z, rotation, [0.0, 0.0])
+        R, z = rotate(R, z, rotation, (0.0, 0.0))
 
-    # remove all triangles which are too close to or inside walls
-    bools = array(
-        [
-            poly.is_inside(p) * poly.distance(p) < resolution * padding_factor
-            for p in zip(R, z)
-        ]
-    )
-
+    bools = poly.is_inside(R, z) * poly.distance(R, z) < resolution * padding_factor
     return trim_vertices(R, z, triangles, bools)
 
 
@@ -621,12 +610,10 @@ def mesh_generator(
         poly = Polygon(x=central_R[central_boundary], y=central_z[central_boundary])
 
         max_dist = resolution * 1e-2
-        trim_vertex = array(
-            [
-                not poly.is_inside(v) and poly.distance(v) > max_dist
-                for v in zip(central_R, central_z)
-            ]
-        )
+        outside = ~poly.is_inside(x=central_R, y=central_z)
+        far_enough = poly.distance(x=central_R, y=central_z) > max_dist
+        trim_vertex = outside & far_enough
+
         # remove any vertices which are outside the boundary
         central_R, central_z, central_triangles = trim_vertices(
             central_R, central_z, central_triangles, trim_vertex
