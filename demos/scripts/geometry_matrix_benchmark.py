@@ -1,6 +1,6 @@
 from numpy import linspace, array, zeros, sqrt, sinc
 from numpy.random import multivariate_normal
-from scipy.integrate import simps
+from scipy.integrate import simpson
 import matplotlib.pyplot as plt
 
 from tokamesh.construction import equilateral_mesh
@@ -75,7 +75,7 @@ for i in range(R_projection.shape[1]):
     samples = mesh.interpolate(
         R_projection[:, i], z_projection[:, i], vertex_values=field
     )
-    direct_integrals[i] = simps(samples, x=L)
+    direct_integrals[i] = simpson(samples, x=L)
 
 
 # plot the results

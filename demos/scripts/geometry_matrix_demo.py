@@ -1,15 +1,14 @@
 from numpy import array, sqrt, exp
 import matplotlib.pyplot as plt
-from scipy.sparse import csc_matrix
 
 from tokamesh import TriangularMesh
 from tokamesh.construction import equilateral_mesh
-from tokamesh.geometry import BarycentricGeometryMatrix
+from tokamesh.geometry import calculate_geometry_matrix
 from tokamesh.utilities import Camera
 
 # build a simple equilateral mesh
 R, z, triangles = equilateral_mesh(
-    R_range=(0.3, 1.5), z_range=(-0.5, 0.5), resolution=0.03
+    R_range=(0.3, 1.5), z_range=(-0.5, 0.5), resolution=0.02
 )
 
 
@@ -24,35 +23,34 @@ def emission_func(R, z):
 emission = emission_func(R, z)
 
 # define a camera to image the emission
-pixels = 150
+image_shape = (150, 150)
 cam = Camera(
     position=array([1.6, 1.8, 1.25]),
     direction=array([-1.0, -0.7, -0.8]),
     fov=40.0,
     max_distance=4.0,
-    num_x=pixels,
-    num_y=pixels,
+    num_x=image_shape[0],
+    num_y=image_shape[1],
 )
 
 # use the mesh and camera information to calculate a geometry matrix
-BGM = BarycentricGeometryMatrix(
-    R=R, z=z, triangles=triangles, ray_origins=cam.ray_starts, ray_ends=cam.ray_ends
+geomat = calculate_geometry_matrix(
+    R=R,
+    z=z,
+    triangles=triangles,
+    ray_origins=cam.ray_starts,
+    ray_ends=cam.ray_ends,
+    n_processes=4,
 )
 
-matrix_data = BGM.calculate()
-
-# extract the data and build a sparse matrix
-entry_values = matrix_data["entry_values"]
-row_values = matrix_data["row_indices"]
-col_values = matrix_data["col_indices"]
-shape = matrix_data["shape"]
-G = csc_matrix((entry_values, (row_values, col_values)), shape=shape)
+# build a sparse array representation of the geometry matrix
+G = geomat.build_sparse_array()
 
 # predict the pixel brightness by taking the product of the geometry
 # matrix with the vector of emission values at each vertex
 pixel_brightness = G @ emission
 # re-shape the pixel brightness into an image
-brightness_image = pixel_brightness.reshape([pixels, pixels])
+brightness_image = pixel_brightness.reshape(image_shape)
 
 # plot the predicted image
 fig = plt.figure(figsize=(9, 4))
