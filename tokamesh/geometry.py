@@ -272,7 +272,7 @@ class GeometryCalculator:
 
         # calculate terms used in the linear inequalities
         self.L_tan = -0.5 * self.q1 / self.q2  # ray-distance of the tangency point
-        self.R_tan_sqr = self.q0 + 0.5 * self.q1 * self.L_tan
+        self.R_tan_sqr = (self.q0 + 0.5 * self.q1 * self.L_tan).clip(min=1e-15)
         self.R_tan = sqrt(self.R_tan_sqr)  # major radius of the tangency point
         # z-height of the tangency point
         self.z_tan = self.pixels[:, 2] + self.rays[:, 2] * self.L_tan
@@ -646,6 +646,8 @@ class GeometryCalculator:
 
 
 def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
+    # analytic result for the integral of the parametric equation for the radius of a
+    # straight-line in cartesian coords (which becomes a hyperbola in cylindrical coords)
     u1 = sqrt_q2 * (l1 - l_tan)
     u2 = sqrt_q2 * (l2 - l_tan)
     R1 = sqrt(u1**2 + R_tan_sqr)
