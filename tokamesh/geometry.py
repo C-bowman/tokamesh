@@ -36,8 +36,8 @@ class RayCollection:
         # coefficients for the quadratic representation of the ray radius
         self.q0 = self.origins[:, 0] ** 2 + self.origins[:, 1] ** 2
         self.q1 = 2 * (
-            self.origins[:, 0] * self.directions[:, 0] +
-            self.origins[:, 1] * self.directions[:, 1]
+            self.origins[:, 0] * self.directions[:, 0]
+            + self.origins[:, 1] * self.directions[:, 1]
         )
         self.q2 = self.directions[:, 0] ** 2 + self.directions[:, 1] ** 2
         self.sqrt_q2 = sqrt(self.q2)
@@ -94,7 +94,7 @@ class RayCollection:
         intersections = (z0 - self.origins[:, 2]) / self.directions[:, 2]
         # convert the ray-distances of the intersections to side-displacements
         R_intersect = sqrt(self.q2 * (intersections - self.L_tan) ** 2 + self.R_tan_sqr)
-        side_displacements = (R_intersect - R0)
+        side_displacements = R_intersect - R0
         # reject any intersections which don't occur on the edge itself
         invalid_intersections = absolute(side_displacements) > 0.5 * w
         intersections[invalid_intersections] = nan
@@ -501,8 +501,8 @@ class GeometryCalculator:
                 )
                 intersections[:, 2 * j + 1] = nan
             else:  # else we need the general intersection calculation
-                intersections[:, 2 * j : 2 * j + 2] = self.rays.edge_hyperbola_intersections(
-                    R0, z0, uR, uz, w
+                intersections[:, 2 * j : 2 * j + 2] = (
+                    self.rays.edge_hyperbola_intersections(R0, z0, uR, uz, w)
                 )
 
         # clip all the intersections so that they lie in the allowed range
@@ -577,9 +577,9 @@ class GeometryCalculator:
             sqrt_q2=self.rays.sqrt_q2[inds],
         )
 
-        z_coeff = self.rays.origins[inds, 2] * dl + 0.5 * self.rays.directions[inds, 2] * (
-            l2_slice**2 - l1_slice**2
-        )
+        z_coeff = self.rays.origins[inds, 2] * dl + 0.5 * self.rays.directions[
+            inds, 2
+        ] * (l2_slice**2 - l1_slice**2)
         lam1_int = (
             self.lam1_coeffs[tri_index, 0] * R_coeff
             + self.lam1_coeffs[tri_index, 1] * z_coeff
