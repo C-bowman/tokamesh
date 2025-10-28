@@ -13,6 +13,105 @@ import sys
 from tokamesh.utilities import build_edge_map, partition_triangles
 
 
+class RayCollection:
+    def __init__(
+        self,
+        origins: ndarray,
+        directions: ndarray = None,
+        ends: ndarray = None,
+    ):
+
+        self.origins = origins
+        self.size = self.origins.shape[0]
+
+        if directions is None:
+            diffs = ends - origins
+            self.lengths = sqrt((diffs**2).sum(axis=1))
+            self.directions = diffs / self.lengths[:, None]
+
+        if ends is None:
+            self.ends = None
+            self.lengths = None
+
+        # coefficients for the quadratic representation of the ray radius
+        self.q0 = self.origins[:, 0] ** 2 + self.origins[:, 1] ** 2
+        self.q1 = 2 * (
+            self.origins[:, 0] * self.directions[:, 0] +
+            self.origins[:, 1] * self.directions[:, 1]
+        )
+        self.q2 = self.directions[:, 0] ** 2 + self.directions[:, 1] ** 2
+        self.sqrt_q2 = sqrt(self.q2)
+
+        # calculate terms used in the linear inequalities
+        self.L_tan = -0.5 * self.q1 / self.q2  # ray-distance of the tangency point
+        self.R_tan_sqr = (self.q0 + 0.5 * self.q1 * self.L_tan).clip(min=1e-15)
+        self.R_tan = sqrt(self.R_tan_sqr)  # major radius of the tangency point
+        # z-height of the tangency point
+        self.z_tan = self.origins[:, 2] + self.directions[:, 2] * self.L_tan
+        # gradient of the hyperbola asymptote line
+        self.m = self.directions[:, 2] / sqrt(self.q2)
+
+    def edge_hyperbola_intersections(
+        self, R0: float, z0: float, uR: float, uz: float, w: float
+    ) -> ndarray:
+        u_ratio = uR / uz
+        alpha = R0 + (self.origins[:, 2] - z0) * u_ratio
+        beta = self.directions[:, 2] * u_ratio
+
+        # calculate the quadratic coefficients
+        a = self.q2 - beta**2
+        b = self.q1 - 2 * alpha * beta
+        c = self.q0 - alpha**2
+
+        # use the discriminant to check for the existence of the roots
+        D = b**2 - 4 * a * c
+        real_roots = (D >= 0).nonzero()
+
+        # where roots exists, calculate them
+        intersections = full([self.size, 2], nan)
+        sqrt_D = sqrt(D[real_roots])
+        twice_a = 2 * a[real_roots]
+        intersections[real_roots, 0] = -(b[real_roots] + sqrt_D) / twice_a
+        intersections[real_roots, 1] = -(b[real_roots] - sqrt_D) / twice_a
+
+        # convert the ray-distances of the intersections to side-displacements
+        side_displacements = (
+            intersections * self.directions[:, 2, None] + self.origins[:, 2, None] - z0
+        ) / uz
+        # reject any intersections which don't occur on the edge itself
+        invalid_intersections = absolute(side_displacements) > 0.5 * w
+        intersections[invalid_intersections] = nan
+        return intersections
+
+    def horizontal_hyperbola_intersections(
+        self, R0: float, z0: float, w: float
+    ) -> ndarray:
+        """
+        Numerically stable calculation of edge-hyperbola intersections for the special
+        case where the edge is almost exactly horizontal.
+        """
+        # find the intersections
+        intersections = (z0 - self.origins[:, 2]) / self.directions[:, 2]
+        # convert the ray-distances of the intersections to side-displacements
+        R_intersect = sqrt(self.q2 * (intersections - self.L_tan) ** 2 + self.R_tan_sqr)
+        side_displacements = (R_intersect - R0)
+        # reject any intersections which don't occur on the edge itself
+        invalid_intersections = absolute(side_displacements) > 0.5 * w
+        intersections[invalid_intersections] = nan
+        return intersections
+
+    def inequality_checks(self, R, z):
+        dz = z[:, None] - self.z_tan[None, :]
+        mR = R[:, None] * self.m[None, :]
+        R_check = R[:, None] > self.R_tan[None, :]
+        t = self.m[None, :] * (R[:, None] - self.R_tan[None, :])
+        rgn_A = (dz > -mR).all(axis=0)
+        rgn_B = (dz < mR).all(axis=0)
+        rgn_C = ((t < dz) & (dz < -t) & R_check).all(axis=0)
+        rgn_D = (~R_check).all(axis=0)
+        return ~(rgn_A | rgn_B | rgn_C | rgn_D)
+
+
 @dataclass
 class GeometryMatrix:
     """
@@ -202,7 +301,7 @@ def calculate_geometry_matrix(
         entry_values=data_vals,
         row_indices=ray_inds,
         col_indices=vertex_inds,
-        matrix_shape=array([GC.n_rays, GC.n_vertices]),
+        matrix_shape=array([GC.rays.size, GC.n_vertices]),
         R_vertices=R,
         z_vertices=z,
         triangle_vertices=triangles,
@@ -256,28 +355,10 @@ class GeometryCalculator:
         self.GeomFacs = GeometryFactors()
 
         # calculate the ray data
-        diffs = ray_ends - ray_origins
-        self.lengths = sqrt((diffs**2).sum(axis=1))
-        self.rays = diffs / self.lengths[:, None]
-        self.pixels = ray_origins
-        self.n_rays = self.lengths.size
-
-        # coefficients for the quadratic representation of the ray radius
-        self.q0 = self.pixels[:, 0] ** 2 + self.pixels[:, 1] ** 2
-        self.q1 = 2 * (
-            self.pixels[:, 0] * self.rays[:, 0] + self.pixels[:, 1] * self.rays[:, 1]
+        self.rays = RayCollection(
+            origins=ray_origins,
+            ends=ray_ends,
         )
-        self.q2 = self.rays[:, 0] ** 2 + self.rays[:, 1] ** 2
-        self.sqrt_q2 = sqrt(self.q2)
-
-        # calculate terms used in the linear inequalities
-        self.L_tan = -0.5 * self.q1 / self.q2  # ray-distance of the tangency point
-        self.R_tan_sqr = (self.q0 + 0.5 * self.q1 * self.L_tan).clip(min=1e-15)
-        self.R_tan = sqrt(self.R_tan_sqr)  # major radius of the tangency point
-        # z-height of the tangency point
-        self.z_tan = self.pixels[:, 2] + self.rays[:, 2] * self.L_tan
-        # gradient of the hyperbola asymptote line
-        self.m = self.rays[:, 2] / sqrt(self.q2)
 
         # Construct a mapping from triangles to edges, and edges to vertices
         self.triangle_edges, self.edge_vertices, _ = build_edge_map(
@@ -390,7 +471,7 @@ class GeometryCalculator:
             "entry_values": data_vals,
             "row_indices": ray_inds,
             "col_indices": vertex_inds,
-            "shape": array([self.n_rays, self.n_vertices]),
+            "shape": array([self.rays.size, self.n_vertices]),
             "R": self.R,
             "z": self.z,
             "triangles": self.triangle_vertices,
@@ -402,69 +483,9 @@ class GeometryCalculator:
 
         return data_dict
 
-    def inequality_checks(self, R, z):
-        dz = z[:, None] - self.z_tan[None, :]
-        mR = R[:, None] * self.m[None, :]
-        R_check = R[:, None] > self.R_tan[None, :]
-        t = self.m[None, :] * (R[:, None] - self.R_tan[None, :])
-        rgn_A = (dz > -mR).all(axis=0)
-        rgn_B = (dz < mR).all(axis=0)
-        rgn_C = ((t < dz) & (dz < -t) & R_check).all(axis=0)
-        rgn_D = (~R_check).all(axis=0)
-        return ~(rgn_A | rgn_B | rgn_C | rgn_D)
-
-    def edge_hyperbola_intersections(
-        self, R0: float, z0: float, uR: float, uz: float, w: float
-    ) -> ndarray:
-        u_ratio = uR / uz
-        alpha = R0 + (self.pixels[:, 2] - z0) * u_ratio
-        beta = self.rays[:, 2] * u_ratio
-
-        # calculate the quadratic coefficients
-        a = self.q2 - beta**2
-        b = self.q1 - 2 * alpha * beta
-        c = self.q0 - alpha**2
-
-        # use the discriminant to check for the existence of the roots
-        D = b**2 - 4 * a * c
-        real_roots = (D >= 0).nonzero()
-
-        # where roots exists, calculate them
-        intersections = full([self.n_rays, 2], nan)
-        sqrt_D = sqrt(D[real_roots])
-        twice_a = 2 * a[real_roots]
-        intersections[real_roots, 0] = -(b[real_roots] + sqrt_D) / twice_a
-        intersections[real_roots, 1] = -(b[real_roots] - sqrt_D) / twice_a
-
-        # convert the ray-distances of the intersections to side-displacements
-        side_displacements = (
-            intersections * self.rays[:, 2, None] + self.pixels[:, 2, None] - z0
-        ) / uz
-        # reject any intersections which don't occur on the edge itself
-        invalid_intersections = absolute(side_displacements) > 0.5 * w
-        intersections[invalid_intersections] = nan
-        return intersections
-
-    def horizontal_hyperbola_intersections(
-        self, R0: float, z0: float, uR: float, uz: float, w: float
-    ) -> ndarray:
-        """
-        Numerically stable calculation of edge-hyperbola intersections for the special
-        case where the edge is almost exactly horizontal.
-        """
-        # find the intersections
-        intersections = (z0 - self.pixels[:, 2]) / self.rays[:, 2]
-        # convert the ray-distances of the intersections to side-displacements
-        R_intersect = sqrt(self.q2 * (intersections - self.L_tan) ** 2 + self.R_tan_sqr)
-        side_displacements = (R_intersect - R0) / uR
-        # reject any intersections which don't occur on the edge itself
-        invalid_intersections = absolute(side_displacements) > 0.5 * w
-        intersections[invalid_intersections] = nan
-        return intersections
-
     def process_triangle(self, tri_index: int):
         # a hyperbola can at most intersect a triangle six times, so we create space for this.
-        intersections = zeros([self.n_rays, 6])
+        intersections = zeros([self.rays.size, 6])
         # loop over each triangle edge and check for intersections
         edges = self.triangle_edges[tri_index, :]
         for j, edge in enumerate(edges):
@@ -475,18 +496,18 @@ class GeometryCalculator:
 
             # if the edge is horizontal, a simplified method can be used
             if abs(uz) < self.min_z_component:
-                intersections[:, 2 * j] = self.horizontal_hyperbola_intersections(
-                    R0, z0, uR, uz, w
+                intersections[:, 2 * j] = self.rays.horizontal_hyperbola_intersections(
+                    R0, z0, w
                 )
                 intersections[:, 2 * j + 1] = nan
             else:  # else we need the general intersection calculation
-                intersections[:, 2 * j : 2 * j + 2] = self.edge_hyperbola_intersections(
+                intersections[:, 2 * j : 2 * j + 2] = self.rays.edge_hyperbola_intersections(
                     R0, z0, uR, uz, w
                 )
 
         # clip all the intersections so that they lie in the allowed range
         maximum(intersections, 0.0, out=intersections)
-        minimum(intersections, self.lengths[:, None], out=intersections)
+        minimum(intersections, self.rays.lengths[:, None], out=intersections)
         # now sort the intersections for each ray in order of distance
         intersections.sort(axis=1)
 
@@ -551,12 +572,12 @@ class GeometryCalculator:
         R_coeff = radius_hyperbolic_integral(
             l1=l1_slice,
             l2=l2_slice,
-            l_tan=self.L_tan[inds],
-            R_tan_sqr=self.R_tan_sqr[inds],
-            sqrt_q2=self.sqrt_q2[inds],
+            l_tan=self.rays.L_tan[inds],
+            R_tan_sqr=self.rays.R_tan_sqr[inds],
+            sqrt_q2=self.rays.sqrt_q2[inds],
         )
 
-        z_coeff = self.pixels[inds, 2] * dl + 0.5 * self.rays[inds, 2] * (
+        z_coeff = self.rays.origins[inds, 2] * dl + 0.5 * self.rays.directions[inds, 2] * (
             l2_slice**2 - l1_slice**2
         )
         lam1_int = (
