@@ -20,16 +20,16 @@ class RayCollection:
         directions: ndarray = None,
         ends: ndarray = None,
     ):
-
+        assert isinstance(directions, ndarray) or isinstance(ends, ndarray)
         self.origins = origins
         self.size = self.origins.shape[0]
 
-        if directions is None:
+        if ends is not None:
             diffs = ends - origins
             self.lengths = sqrt((diffs**2).sum(axis=1))
             self.directions = diffs / self.lengths[:, None]
-
-        if ends is None:
+        else:
+            self.directions = directions
             self.ends = None
             self.lengths = None
 
@@ -756,8 +756,8 @@ def linear_geometry_matrix(
 
     good_rays = (
         ray_origins.ndim == ray_ends.ndim == 2
-        and ray_origins.shape[0] == ray_origins.shape[0]
-        and ray_origins.shape[1] == ray_origins.shape[1] == 3
+        and ray_origins.shape[0] == ray_ends.shape[0]
+        and ray_origins.shape[1] == ray_ends.shape[1] == 3
     )
     if not good_rays:
         raise ValueError(
