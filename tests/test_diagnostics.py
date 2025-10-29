@@ -13,10 +13,10 @@ def test_ray_boundary_intersections():
     cam = Camera(
         position=cam_position,
         direction=cam_direction,
-        max_distance=10.,
+        max_distance=10.0,
         num_x=5,
         num_y=5,
-        fov=60.,
+        fov=60.0,
     )
 
     # generate both an upper and lower fan of lines on the outboard side of MAST-U
@@ -48,7 +48,7 @@ def test_ray_boundary_intersections():
             z_boundary=z_bnd,
             ray_origins=ray_origins,
             ray_directions=ray_directions,
-            min_distance=0.
+            min_distance=0.0,
         )
 
         # get the (R, z) locations of the ray endpoints
