@@ -33,6 +33,14 @@ or download the files from `PyPI <https://pypi.org/project/tokamesh/>`_ directly
    construction_refinement
    operators
 
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Diagnostic modelling
+
+   diagnostics
+
+
 .. toctree::
    :maxdepth: 1
    :caption: Interpolation and plotting
