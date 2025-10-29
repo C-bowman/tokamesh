@@ -1,5 +1,7 @@
-from numpy import sqrt, sin, cos, tan, ceil, dot, pi, cross
-from numpy import array, linspace, meshgrid, ndarray, zeros
+from numpy import sqrt, sin, cos, tan, ceil, dot, pi, cross, inf
+from numpy import array, full, linspace, meshgrid, ndarray, zeros
+from numpy import isfinite, minimum, stack, concatenate, atleast_1d
+from tokamesh.geometry import RayCollection
 
 
 def radial_fan(
@@ -8,6 +10,26 @@ def radial_fan(
     phi: float,
     angle_range: tuple[float, float],
 ) -> tuple[ndarray, ndarray]:
+    """
+    Generate a fan of lines-of-sight which are purely radial (i.e. have a constant
+    toroidal angle).
+
+    :param n_lines: \
+        The number of lines-of-sight in the fan.
+
+    :param poloidal_position: \
+        The ``(R, z)`` position of the origin point of the fan as a tuple of two floats.
+
+    :param phi: \
+        The toroidal angle of the fan.
+
+    :param angle_range: \
+        The range of angles in the poloidal plane over which the fan is spread as
+        a tuple of two floats.
+
+    :return: \
+        The ray origins and the ray directions as a pair of numpy arrays.
+    """
     R, z = poloidal_position
     origins = zeros([n_lines, 3])
     origins[:, 0] = R * cos(phi)
@@ -73,3 +95,113 @@ def unit_circle_hexgrid(order: int) -> tuple[ndarray, ndarray]:
     r_sqr = x**2 + y**2
     inside = r_sqr <= (1 + eps)
     return x[inside], y[inside]
+
+
+def find_ray_boundary_intersections(
+    R_boundary: ndarray,
+    z_boundary: ndarray,
+    ray_origins: ndarray,
+    ray_directions: ndarray,
+    min_distance: float = 0.0,
+) -> ndarray:
+    """
+    Calculate the end-points of a series of lines-of-sight based on the first
+    position along each line which intersects with a polygon representing
+    the machine boundary.
+
+    :param R_boundary: \
+        The major radius values of the boundary polygon as a 1D numpy array.
+
+    :param z_boundary: \
+        The z-height values of the boundary polygon as a 1D numpy array.
+
+    :param ray_origins: \
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param ray_directions: \
+        The ``(x,y,z)`` direction unit-vectors of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param min_distance: \
+        The minimum allowed distance of an intersection point from the ray origin.
+        Any intersections with the boundary at a distance less than this value
+        are ignored.
+    """
+
+    valid_rays = (
+        ray_origins.ndim == ray_directions.ndim == 2
+        and ray_origins.shape[0] == ray_directions.shape[0]
+        and ray_origins.shape[1] == ray_directions.shape[1] == 3
+    )
+    if not valid_rays:
+        raise ValueError(
+            f"""\n
+            \r[ find_ray_boundary_intersections error ]
+            \r>> 'ray_origins' and 'ray_directions' must both have shape (N, 3)
+            \r>> where 'N' is the number of rays. Instead, they have shapes
+            \r>> {ray_origins.shape}, {ray_directions.shape}
+            \r>> respectively.
+            """
+        )
+
+    rays = RayCollection(origins=ray_origins, directions=ray_directions)
+
+    # ensure that the given boundary forms a closed loop
+    if (R_boundary[0] != R_boundary[-1]) or (z_boundary[0] != z_boundary[-1]):
+        R_boundary = concatenate([R_boundary, atleast_1d(R_boundary[0])])
+        z_boundary = concatenate([z_boundary, atleast_1d(z_boundary[0])])
+
+    # pair-up adjacent boundary points to form the edges
+    R_edges = stack([R_boundary[:-1], R_boundary[1:]], axis=1)
+    z_edges = stack([z_boundary[:-1], z_boundary[1:]], axis=1)
+    n_edges = R_edges.shape[0]
+
+    # pre-calculate the properties of each edge
+    R_edge_mid = R_edges.mean(axis=1)
+    z_edge_mid = z_edges.mean(axis=1)
+    edge_lengths = sqrt(
+        (R_edges[:, 0] - R_edges[:, 1]) ** 2 + (z_edges[:, 0] - z_edges[:, 1]) ** 2
+    )
+    edge_drn = zeros([n_edges, 2])
+    edge_drn[:, 0] = R_edges[:, 1] - R_edges[:, 0]
+    edge_drn[:, 1] = z_edges[:, 1] - z_edges[:, 0]
+    edge_drn /= edge_lengths[:, None]
+
+    # for edges in the mesh which are very close to horizontal, the regular
+    # intersection calculation becomes inaccurate. Here we set a lower-limit
+    # on the allowed size of the z-component of the edge unit vector. Edges
+    # with a z-component below this limit will instead use a different
+    # intersection calculation for horizontal edges.
+    min_z_component = 1e-12
+
+    # we are looking for the intersection with the shortest distance from the origin
+    # which is also above the set minimum distance. Using this function to update
+    # the intersections as we loop through boundary edges ensures the correct result.
+    def update_intersections(current_isec: ndarray, new_isec: ndarray):
+        valid = isfinite(new_isec) & (new_isec > min_distance)
+        current_isec[valid] = minimum(current_isec[valid], new_isec[valid])
+
+    intersections = full(rays.size, fill_value=inf, dtype=float)
+    for edge in range(n_edges):
+        R0 = R_edge_mid[edge]
+        z0 = z_edge_mid[edge]
+        uR, uz = edge_drn[edge, :]
+        w = edge_lengths[edge]
+
+        # if the edge is horizontal, a simplified method can be used
+        if abs(uz) < min_z_component:
+            new_intersects = rays.horizontal_hyperbola_intersections(R0, z0, w)
+            update_intersections(intersections, new_intersects)
+
+        else:  # else we need the general intersection calculation
+            new_intersects = rays.edge_hyperbola_intersections(R0, z0, uR, uz, w)
+            update_intersections(intersections, new_intersects[:, 0])
+            update_intersections(intersections, new_intersects[:, 1])
+
+    # finally project the rays to the calculated intersection distances
+    # to calculate the end-points
+    ray_ends = rays.origins + rays.directions * intersections[:, None]
+    return ray_ends
