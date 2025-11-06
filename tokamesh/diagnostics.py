@@ -1,6 +1,7 @@
 from numpy import sqrt, sin, cos, tan, ceil, dot, pi, cross, inf
-from numpy import array, full, linspace, meshgrid, ndarray, zeros
+from numpy import array, arange, full, linspace, meshgrid, ndarray, zeros
 from numpy import isfinite, minimum, stack, concatenate, atleast_1d
+from scipy.sparse import csc_matrix
 from tokamesh.geometry import RayCollection
 
 
@@ -21,7 +22,7 @@ def radial_fan(
         The ``(R, z)`` position of the origin point of the fan as a tuple of two floats.
 
     :param phi: \
-        The toroidal angle of the fan.
+        The toroidal angle of the fan origin point.
 
     :param angle_range: \
         The range of angles in the poloidal plane over which the fan is spread as
@@ -42,6 +43,59 @@ def radial_fan(
     directions[:, 0] = cos(phi) * R_unit
     directions[:, 1] = sin(phi) * R_unit
     directions[:, 2] = sin(theta_axis)
+    return origins, directions
+
+
+def tangential_fan(
+    poloidal_position: tuple[float, float],
+    phi: float,
+    n_lines: int = 8,
+    angle_range: tuple[float, float] = (0.0, 60.0),
+    angles: ndarray[float] = None,
+) -> tuple[ndarray, ndarray]:
+    """
+    Generate a fan of lines-of-sight with different tangency radii but a constant
+    z-height value.
+
+    :param poloidal_position: \
+        The ``(R, z)`` position of the origin point of the fan as a tuple of two floats.
+
+    :param phi: \
+        The toroidal angle of the fan origin point.
+
+    :param n_lines: \
+        The number of lines-of-sight in the fan.
+
+    :param angle_range: \
+        The range of angles (in degrees) between the inward major radius vector and the
+        lines of sight. Angles of 0 and 90 degrees therefore correspond to purely radial
+        and purely tangential lines of sight respectively.
+
+    :param angles: \
+        An array of angles (in degrees) for each line-of-sight. If provided, this
+        argument overrides the ``n_lines`` and ``angle_range`` arguments.
+
+    :return: \
+        The ray origins and the ray directions as a pair of numpy arrays.
+    """
+    if angles is None:
+        angles = linspace(*angle_range, n_lines)
+
+    R, z = poloidal_position
+    inward = [-cos(phi), -sin(phi)]
+
+    directions = zeros([angles.size, 3])
+    origins = zeros([angles.size, 3])
+    origins[:, 0] = R * cos(phi)
+    origins[:, 1] = R * sin(phi)
+    origins[:, 2] = z
+
+    rads = angles * pi / 180
+    cos_t = cos(rads)
+    sin_t = sin(rads)
+    directions[:, 0] = inward[0] * cos_t - inward[1] * sin_t
+    directions[:, 1] = inward[0] * sin_t + inward[1] * cos_t
+
     return origins, directions
 
 
@@ -205,3 +259,72 @@ def find_ray_boundary_intersections(
     # to calculate the end-points
     ray_ends = rays.origins + rays.directions * intersections[:, None]
     return ray_ends
+
+
+def line_integration_matrix(
+    origins: ndarray, endpoints: ndarray, target_resolution: float
+) -> tuple[ndarray, ndarray, csc_matrix]:
+    """
+    Generate a series of (R, z) points to be used in calculating line-integrals along
+    a set of given lines-of-sight, and a corresponding sparse-matrix operator which
+    computes the integrals when multiplied with a vector of field values at those
+    (R, z) positions.
+
+    :param origins: \
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param endpoints: \
+        The ``(x,y,z)`` position vectors of the end-point of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param target_resolution: \
+        The target distance between integration points for each line-of-sight.
+    """
+    entries = []
+    rows = []
+    R = []
+    z = []
+    distances = sqrt(((endpoints - origins) ** 2).sum(axis=1))
+    n_lines = origins.shape[0]
+
+    # loop over each line-of-sight
+    for i in range(n_lines):
+        # split the line into equal segments close to the target resolution
+        n_points = int(ceil(distances[i] / target_resolution)) + 1
+        dl = distances[i] / (n_points - 1)
+
+        # get the (R, z) coordinates of the integration points
+        fader = linspace(0, 1, n_points)
+        line = (
+            origins[i, :][:, None] * (1 - fader[None, :])
+            + fader[None, :] * endpoints[i, :][:, None]
+        )
+        R.append(sqrt(line[0, :] ** 2 + line[1, :] ** 2))
+        z.append(line[2, :])
+
+        # build the trapezium integration weights
+        weights = full(n_points, fill_value=dl)
+        weights[0] = dl * 0.5
+        weights[-1] = dl * 0.5
+        entries.append(weights)
+
+        # build the row indices for the current line
+        rows.append(full(n_points, fill_value=i, dtype=int))
+
+    # combine the data for all lines into single arrays
+    R = concatenate(R)
+    z = concatenate(z)
+    entries = concatenate(entries)
+    rows = concatenate(rows)
+
+    total_points = R.size
+    cols = arange(total_points, dtype=int)
+
+    # build a sparse matrix which computes the line-integrals
+    total_points = R.size
+    matrix_shape = (n_lines, total_points)
+    integration_matrix = csc_matrix((entries, (rows, cols)), shape=matrix_shape)
+    return R, z, integration_matrix
