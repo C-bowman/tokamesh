@@ -6,17 +6,15 @@ from tokamesh.geometry import RayCollection
 
 
 def radial_fan(
-    n_lines: int,
     poloidal_position: tuple[float, float],
     phi: float,
-    angle_range: tuple[float, float],
+    n_lines: int = 8,
+    angle_range: tuple[float, float] = (130.0, 230.0),
+    angles: ndarray[float] = None,
 ) -> tuple[ndarray, ndarray]:
     """
     Generate a fan of lines-of-sight which are purely radial (i.e. have a constant
     toroidal angle).
-
-    :param n_lines: \
-        The number of lines-of-sight in the fan.
 
     :param poloidal_position: \
         The ``(R, z)`` position of the origin point of the fan as a tuple of two floats.
@@ -24,9 +22,16 @@ def radial_fan(
     :param phi: \
         The toroidal angle of the fan origin point.
 
+    :param n_lines: \
+        The number of lines-of-sight in the fan.
+
     :param angle_range: \
         The range of angles in the poloidal plane over which the fan is spread as
         a tuple of two floats.
+
+    :param angles: \
+        An array of angles (in degrees) for each line-of-sight. If provided, this
+        argument overrides the ``n_lines`` and ``angle_range`` arguments.
 
     :return: \
         The ray origins and the ray directions as a pair of numpy arrays.
@@ -37,7 +42,10 @@ def radial_fan(
     origins[:, 1] = R * sin(phi)
     origins[:, 2] = z
 
-    theta_axis = linspace(*angle_range, n_lines) * (pi / 180)
+    if angles is None:
+        angles = linspace(*angle_range, n_lines)
+
+    theta_axis = angles * (pi / 180)
     R_unit = cos(theta_axis)
     directions = zeros([n_lines, 3])
     directions[:, 0] = cos(phi) * R_unit
