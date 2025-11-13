@@ -29,9 +29,16 @@ class RayCollection:
             self.lengths = sqrt((diffs**2).sum(axis=1))
             self.directions = diffs / self.lengths[:, None]
         else:
-            self.directions = directions
+            norm = sqrt((directions**2).sum(axis=1))
+            self.directions = directions / norm[:, None]
             self.ends = None
             self.lengths = None
+
+        # if any directions have zero z-component, replace it with a tiny value
+        # to prevent division by zero in certain intersection calculations
+        zero_z = abs(self.directions[:, 2]) < 1e-20
+        if zero_z.any():
+            self.directions[zero_z, 2] = 1e-20
 
         # coefficients for the quadratic representation of the ray radius
         self.q0 = self.origins[:, 0] ** 2 + self.origins[:, 1] ** 2
