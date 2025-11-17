@@ -24,49 +24,12 @@ class TriangularMesh:
     """
 
     def __init__(self, R: ndarray, z: ndarray, triangles: ndarray):
-        for name, obj in [("R", R), ("z", z), ("triangles", triangles)]:
-            if not isinstance(obj, ndarray):
-                raise TypeError(
-                    f"""\n
-                    \r[ TriangularMesh error ]
-                    \r>> The '{name}' argument of TriangularMesh should have type:
-                    \r>> {ndarray}
-                    \r>> but instead has type:
-                    \r>> {type(obj)}
-                    """
-                )
 
-        for name, obj in [("R", R), ("z", z)]:
-            if obj.squeeze().ndim > 1:
-                raise ValueError(
-                    f"""\n
-                    \r[ TriangularMesh error ]
-                    \r>> The '{name}' argument of TriangularMesh should be
-                    \r>> a 1D array, but given array has shape {obj.shape}.
-                    """
-                )
+        validate_mesh_data(R, z, triangles)
 
-        if R.size != z.size:
-            raise ValueError(
-                f"""\n
-                \r[ TriangularMesh error ]
-                \r>> The 'R' and 'z' arguments of TriangularMesh should be
-                \r>> of equal size, but given arrays have sizes {R.size} and {z.size}.
-                """
-            )
-
-        if triangles.squeeze().ndim != 2 or triangles.squeeze().shape[1] != 3:
-            raise ValueError(
-                f"""\n
-                \r[ TriangularMesh error ]
-                \r>> The 'triangles' argument must have shape (num_triangles, 3)
-                \r>> but given array has shape {triangles.shape}.
-                """
-            )
-
-        self.R = R.squeeze()
-        self.z = z.squeeze()
-        self.triangle_vertices = triangles.squeeze()
+        self.R = R
+        self.z = z
+        self.triangle_vertices = triangles
         self.n_vertices = self.R.size
         self.n_triangles = self.triangle_vertices.shape[0]
 
@@ -540,3 +503,72 @@ class FieldAlignedMesh(TriangularMesh):
     def load(cls, filepath: str):
         D = load(filepath)
         return cls(**D)
+
+
+def validate_mesh_data(
+    R: ndarray, z: ndarray, triangles: ndarray, error_source="TriangularMesh"
+):
+    for name, obj in [("R", R), ("z", z), ("triangles", triangles)]:
+        if not isinstance(obj, ndarray):
+            raise TypeError(
+                f"""\n
+                \r[ {error_source} error ]
+                \r>> The '{name}' argument should have type:
+                \r>> {ndarray}
+                \r>> but instead has type:
+                \r>> {type(obj)}
+                """
+            )
+
+    for name, obj in [("R", R), ("z", z)]:
+        if obj.ndim > 1:
+            raise ValueError(
+                f"""\n
+                \r[ {error_source} error ]
+                \r>> The '{name}' argument should be a 1D array,
+                \r>> but instead has shape {obj.shape}.
+                """
+            )
+
+    if R.size != z.size:
+        raise ValueError(
+            f"""\n
+            \r[ {error_source} error ]
+            \r>> The 'R' and 'z' arguments should be of equal size, but
+            \r>> have sizes {R.size} and {z.size} respectively.
+            """
+        )
+
+    if triangles.ndim != 2 or triangles.shape[1] != 3:
+        raise ValueError(
+            f"""\n
+            \r[ {error_source} error ]
+            \r>> The 'triangles' argument must have shape (num_triangles, 3)
+            \r>> but given array has shape {triangles.shape}.
+            """
+        )
+
+    valid_indices = triangles.min() >= 0 and triangles.max() < R.size
+    if not valid_indices:
+        raise ValueError(
+            f"""\n
+            \r[ {error_source} error ]
+            \r>> All values in the 'triangles' array must be integers in the range:
+            \r>> (0, n_vertices - 1)
+            """
+        )
+
+    # check for duplicated vertex indices
+    duplicates = (
+        (triangles[:, 0] == triangles[:, 1]).any()
+        or (triangles[:, 1] == triangles[:, 2]).any()
+        or (triangles[:, 0] == triangles[:, 2]).any()
+    )
+    if duplicates:
+        raise ValueError(
+            f"""\n
+            \r[ {error_source} error ]
+            \r>> At least one triangle specified by the 'triangles' argument
+            \r>> contains duplicate vertices.
+            """
+        )

@@ -11,6 +11,7 @@ from time import perf_counter
 import sys
 
 from tokamesh.utilities import build_edge_map, partition_triangles
+from tokamesh.mesh import validate_mesh_data
 
 
 class RayCollection:
@@ -351,7 +352,8 @@ class GeometryCalculator:
         ray_ends: ndarray,
     ):
         # first check the validity of the data
-        self.check_geometry_data(R, z, triangles, ray_origins, ray_ends)
+        validate_ray_data(ray_origins, ray_ends, error_source="GeometryCalculator")
+        validate_mesh_data(R, z, triangles, error_source="GeometryCalculator")
 
         # store the mesh data
         self.R = R
@@ -600,77 +602,51 @@ class GeometryCalculator:
         lam3_int = dl - lam1_int - lam2_int
         return lam1_int, lam2_int, lam3_int
 
-    @staticmethod
-    def check_geometry_data(
-        R: ndarray,
-        z: ndarray,
-        triangle_inds: ndarray,
-        ray_starts: ndarray,
-        ray_ends: ndarray,
-    ):
-        """
-        Check that all the data have the correct shapes / types
-        """
-        if not all(
-            isinstance(arg, ndarray)
-            for arg in [R, z, triangle_inds, ray_starts, ray_ends]
-        ):
+
+def validate_ray_data(
+    ray_origins: ndarray, ray_ends: ndarray, error_source: str = "validate_ray_data"
+):
+    for tag, arr in [
+        ("ray_origins", ray_origins),
+        ("ray_ends", ray_ends),
+    ]:
+        if not isinstance(arr, ndarray):
             raise TypeError(
-                """\n\n
-                \r[ GeometryCalculator error ]
-                \r>> All arguments must be of type numpy.ndarray.
+                f"""\n\n
+                \r[ {error_source} error ]
+                \r>> The '{tag}' argument should have type:
+                \r>> {ndarray}
+                \r>> but instead has type:
+                \r>> {type(arr)}
                 """
             )
 
-        if R.ndim != 1 or z.ndim != 1 or R.size != z.size:
+        float_precision = finfo(arr.dtype).precision
+        if float_precision < 15:
             raise ValueError(
-                """\n\n
-                \r[ GeometryCalculator error ]
-                \r>> 'R' and 'z' arguments must be 1-dimensional arrays of equal length.
+                f"""\n\n
+                \r[ {error_source} error ]
+                \r>> The '{tag}' argument array has a data-type of {arr.dtype}
+                \r>> with a decimal precision of {float_precision}.
+                \r>> Arrays should use at least 64-bit floats, such that the
+                \r>> decimal precision is 15 or above.
                 """
             )
 
-        if triangle_inds.ndim != 2 or triangle_inds.shape[1] != 3:
-            raise ValueError(
-                """\n\n
-                \r[ GeometryCalculator error ]
-                \r>> 'triangle_inds' argument must be a 2-dimensional array of shape (N,3)
-                \r>> where 'N' is the total number of triangles.
-                """
-            )
-
-        if (
-            ray_starts.ndim != 2
-            or ray_ends.ndim != 2
-            or ray_starts.shape[1] != 3
-            or ray_ends.shape[1] != 3
-            or ray_ends.shape[0] != ray_starts.shape[0]
-        ):
-            raise ValueError(
-                """\n\n
-                \r[ GeometryCalculator error ]
-                \r>> 'ray_starts' and 'ray_ends' arguments must be 2-dimensional arrays
-                \r>> of shape (M,3), where 'M' is the total number of rays.
-                """
-            )
-
-        for tag, arr in [
-            ("R", R),
-            ("z", z),
-            ("ray_starts", ray_starts),
-            ("ray_ends", ray_ends),
-        ]:
-            float_precision = finfo(arr.dtype).precision
-            if float_precision < 15:
-                raise ValueError(
-                    f"""\n\n
-                    \r[ GeometryCalculator error ]
-                    \r>> The '{tag}' argument array has a data-type of {arr.dtype}
-                    \r>> with a decimal precision of {float_precision}.
-                    \r>> Arrays should use at least 64-bit floats, such that the
-                    \r>> decimal precision is 15 or above.
-                    """
-                )
+    if (
+        ray_origins.ndim != 2
+        or ray_ends.ndim != 2
+        or ray_origins.shape[1] != 3
+        or ray_ends.shape[1] != 3
+        or ray_ends.shape[0] != ray_origins.shape[0]
+    ):
+        raise ValueError(
+            f"""\n\n
+            \r[ {error_source} error ]
+            \r>> 'ray_origins' and 'ray_ends' arguments must be 2-dimensional arrays
+            \r>> of shape (M,3), where 'M' is the total number of rays.
+            """
+        )
 
 
 def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
@@ -729,18 +705,20 @@ def linear_geometry_matrix(
         as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
         total number of rays.
     """
-    # verify the inputs are all numpy arrays
-    for name, var in [("R", R), ("ray_origins", ray_origins), ("ray_ends", ray_ends)]:
-        if type(var) is not ndarray:
-            raise TypeError(
-                f"""\n
-                \r[ linear_geometry_matrix error ]
-                \r>> '{name}' argument must have type: 
-                \r>> {ndarray}
-                \r>> but instead has type:
-                \r>> {type(var)}
-                """
-            )
+
+    validate_ray_data(ray_origins, ray_ends, error_source="linear_geometry_matrix")
+
+    # validate the radius axis data
+    if not isinstance(R, ndarray):
+        raise TypeError(
+            f"""\n
+            \r[ linear_geometry_matrix error ]
+            \r>> 'R' argument must have type: 
+            \r>> {ndarray}
+            \r>> but instead has type:
+            \r>> {type(R)}
+            """
+        )
 
     # check all shapes of the inputs
     n_points = R.size
@@ -758,22 +736,6 @@ def linear_geometry_matrix(
             """\n
             \r[ linear_geometry_matrix error ]
             \r>> 'R' argument be sorted in ascending order, and contain only unique values.
-            """
-        )
-
-    good_rays = (
-        ray_origins.ndim == ray_ends.ndim == 2
-        and ray_origins.shape[0] == ray_ends.shape[0]
-        and ray_origins.shape[1] == ray_ends.shape[1] == 3
-    )
-    if not good_rays:
-        raise ValueError(
-            f"""\n
-            \r[ linear_geometry_matrix error ]
-            \r>> 'ray_origins' and 'ray_ends' must both have shape (N, 3)
-            \r>> where 'N' is the number of rays. Instead, they have shapes
-            \r>> {ray_origins.shape}, {ray_ends.shape}
-            \r>> respectively.
             """
         )
 
