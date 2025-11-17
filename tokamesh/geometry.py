@@ -1,5 +1,5 @@
 from numpy import sqrt, log
-from numpy import absolute, nan, isfinite, minimum, maximum, isnan
+from numpy import absolute, nan, isfinite, minimum, maximum, isnan, ones
 from numpy import array, full, zeros, stack, savez, concatenate, load
 from numpy import ndarray, finfo
 from scipy.sparse import csc_array
@@ -799,3 +799,79 @@ def linear_geometry_matrix(
             G[:, cell] += integral * grads[cell, 0] + offsets[cell, 0] * dl
             G[:, cell + 1] += integral * grads[cell, 1] + offsets[cell, 1] * dl
     return G
+
+
+def select_midplane_pixels(
+    ray_origins: ndarray,
+    ray_ends: ndarray,
+    R_limits: tuple[float, float],
+    z_limits: tuple[float, float],
+    mask: ndarray = None,
+) -> ndarray:
+    """
+    Selects pixels whose line-of-sight remains within a given range of z-height values
+    whilst inside a given range of major radius values.
+
+    By setting the radius limits to match the extent of the plasma, and the z-limits
+    to a small window encompassing ``z = 0``, this function will select pixels with a
+    'midplane' view which can be used in 1D inversions of the emission.
+
+    :param ray_origins: \
+        The ``(x,y,z)`` position vectors of the origin of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param ray_ends: \
+        The ``(x,y,z)`` position vectors of the end-points of each ray (i.e. line-of-sight)
+        as a 2D numpy array. The array must have shape ``(M,3)`` where ``M`` is the
+        total number of rays.
+
+    :param R_limits: \
+        The range of radius values used in the selection as a tuple of
+        the form ``(R_min, R_max)``. Any rays whose tangency radius is not inside
+        the given limits will not be selected.
+
+    :param z_limits: \
+        The limits placed on the z-values for the selection in the form
+        ``(z_min, z_max)``. Pixels are selected if their z-value remains inside
+        these limits whilst their radius value is also within the given radius limits.
+
+    :param mask: \
+        A boolean array specifying which pixels should be considered and which should
+        be ignored. Pixel which to be considered should be marked as ``True``.
+
+    :return: \
+        A boolean array specifying the pixels which satisfy the conditions as ``True``.
+    """
+    # check shapes and dimensions
+    validate_ray_data(ray_origins, ray_ends, error_source="select_midplane_pixels")
+
+    mask = ones(ray_origins.shape[0], dtype=bool) if mask is None else mask
+
+    assert mask.ndim == 1
+    assert mask.size == ray_origins.shape[0]
+    assert 0 < R_limits[0] < R_limits[1]
+    assert z_limits[0] < z_limits[1]
+
+    rays = RayCollection(origins=ray_origins, ends=ray_ends)
+
+    R_min, R_max = R_limits
+    z_min, z_max = z_limits
+
+    # Get the squared ray-distance required to move from the tangency point to R_max
+    delta_L_sqr = (R_max**2 - rays.R_tan_sqr) / rays.q2
+    # If this is negative, then the ray never achieves a radius less than R_max
+    no_roots = delta_L_sqr < 0.0
+    if no_roots.any():
+        delta_L_sqr[no_roots] = nan
+
+    # get the z-values at the two points where R = R_max
+    delta_L = sqrt(delta_L_sqr)
+    z1 = ray_origins[:, 2] + (rays.L_tan + delta_L) * rays.directions[:, 2]
+    z2 = ray_origins[:, 2] + (rays.L_tan - delta_L) * rays.directions[:, 2]
+
+    # check which rays meet the conditions
+    midplane_pixels = (z1 < z_max) & (z1 > z_min) & (z2 < z_max) & (z2 > z_min)
+    midplane_pixels &= rays.R_tan > R_min
+    midplane_pixels &= mask
+    return midplane_pixels

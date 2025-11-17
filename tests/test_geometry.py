@@ -5,9 +5,11 @@ from scipy.integrate import quad, simpson
 
 from tokamesh.construction import equilateral_mesh
 from tokamesh import TriangularMesh
-from tokamesh.geometry import calculate_geometry_matrix
+from tokamesh.geometry import calculate_geometry_matrix, select_midplane_pixels
 from tokamesh.geometry import radius_hyperbolic_integral, linear_geometry_matrix
 from tokamesh.utilities import build_edge_map, Camera
+from tokamesh.diagnostics import find_ray_boundary_intersections
+from tokamesh.tokamaks import mastu_boundary
 
 
 def test_geometry_matrix_calculation():
@@ -176,3 +178,37 @@ def test_linear_geometry_matrix():
 
     # check that analytic integral agrees with numerical one
     assert abs(analytic_integral - numerical_integral).max() < 1e-5
+
+
+def test_select_midplane_pixels():
+    image_shape = (128, 128)
+
+    camera = Camera(
+        position=array([1.75, 0.0, 0.0]),
+        direction=array([-1.0, 0.0, 0.0]),
+        num_x=image_shape[0],
+        num_y=image_shape[1],
+        fov=100.0,
+    )
+
+    ray_origins = camera.ray_starts
+    ray_directions = camera.ray_directions
+
+    R_bnd, z_bnd = mastu_boundary()
+    ray_ends = find_ray_boundary_intersections(
+        R_boundary=R_bnd,
+        z_boundary=z_bnd,
+        ray_origins=ray_origins,
+        ray_directions=ray_directions,
+    )
+
+    mask = zeros(image_shape, dtype=bool)
+    mask[: image_shape[0] // 2, :] = 1
+
+    midplane = select_midplane_pixels(
+        ray_origins=ray_origins,
+        ray_ends=ray_ends,
+        R_limits=(0.25, 1.2),
+        z_limits=(-0.05, 0.05),
+        mask=mask.flatten(),
+    )
