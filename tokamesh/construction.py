@@ -1,6 +1,6 @@
 from numpy import sqrt, ceil, sin, cos, arctan2, diff, minimum, maximum, cumsum
 from numpy import array, ones, zeros, full, linspace, arange, concatenate, vstack
-from numpy import in1d, unique, isclose, nan, atleast_1d, intersect1d, meshgrid
+from numpy import isin, unique, isclose, nan, atleast_1d, intersect1d, meshgrid
 from numpy import int64, ndarray
 from warnings import warn
 
@@ -115,9 +115,9 @@ def trim_vertices(
         specified vertices removed.
     """
     vert_inds = (~trim_bools).nonzero()[0]
-    tri_bools = in1d(triangles[:, 0], vert_inds)
-    tri_bools &= in1d(triangles[:, 1], vert_inds)
-    tri_bools &= in1d(triangles[:, 2], vert_inds)
+    tri_bools = isin(triangles[:, 0], vert_inds)
+    tri_bools &= isin(triangles[:, 1], vert_inds)
+    tri_bools &= isin(triangles[:, 2], vert_inds)
     tri_inds = tri_bools.nonzero()[0]
     index_converter = zeros(R.size, dtype=int64)
     index_converter[vert_inds] = arange(vert_inds.size)
