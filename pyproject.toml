@@ -57,6 +57,7 @@ tests = [
     "pytest >= 3.3.0",
     "pytest-cov >= 3.0.0",
     "hypothesis >= 6.24",
+    "triangle >= 20230923"
 ]
 
 triangle = [
