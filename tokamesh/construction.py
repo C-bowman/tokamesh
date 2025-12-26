@@ -726,8 +726,19 @@ def build_edge_mesh(
     )
 
     options = f"QPBzpqa{max_area:.12f}"
-    from triangle import triangulate
-
+    try:
+        from triangle import triangulate
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            """\n
+            \r[ tokamesh error ]
+            \r>> Generating irregular triangular meshes relies on the 'triangle'
+            \r>> python package, which is an optional dependency of tokamesh.
+            \r>> Either install 'triangle' directly, or install tokamesh using
+            \r>> the triangle optional dependency like so:
+            \r>> pip install tokamesh[triangle]
+            """
+        )
     triangle_outputs = triangulate(triangle_inputs, options)
     triangles = triangle_outputs["triangles"]
     vertices = triangle_outputs["vertices"]
