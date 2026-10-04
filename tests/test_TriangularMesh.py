@@ -1,8 +1,9 @@
 import pytest
-from numpy import arange, array, sin, cos, pi, isclose, ones, sqrt, sinc, zeros
+from numpy import arange, array, sin, cos, pi, isclose, ones, sqrt, sinc, zeros, ndarray
 from numpy.random import uniform, seed, multivariate_normal
+from scipy.sparse import csr_array
 from tokamesh import TriangularMesh
-from tokamesh.utilities import BinaryTree
+from tokamesh.utilities import BinaryTree, UniformGridLookup
 from tokamesh.construction import equilateral_mesh
 import matplotlib.pyplot as plt
 from hypothesis import given, strategies as st
@@ -87,7 +88,8 @@ def test_interpolate(mesh):
     assert isclose(interpolated, plane(0.31, 0.54)).all()
 
 
-def test_build_interpolator_matrix(mesh):
+@pytest.mark.parametrize("sparse", [True, False])
+def test_build_interpolator_matrix(mesh, sparse):
     # As barycentric interpolation is linear, if we use a plane as the test
     # function, it should agree nearly exactly with interpolation result.
     def plane(x, y):
@@ -97,16 +99,30 @@ def test_build_interpolator_matrix(mesh):
     # create a series of random test-points
     R_test = uniform(0.2, 0.8, size=5000)
     z_test = uniform(0.2, 0.8, size=5000)
-    G = mesh.build_interpolator_matrix(R_test, z_test)
+    G = mesh.build_interpolator_matrix(R_test, z_test, sparse=sparse)
+    if sparse:
+        assert isinstance(G, csr_array)
+        assert G.nnz <= 3 * R_test.size
+        assert G.has_canonical_format
+    else:
+        assert isinstance(G, ndarray)
     interpolated = G.dot(vertex_values)
     # check the exact and interpolated values are equal
     assert isclose(interpolated, plane(R_test, z_test)).all()
 
     # now test giving just floats
     r, z = 0.61, 0.74
-    G = mesh.build_interpolator_matrix(r, z)
+    G = mesh.build_interpolator_matrix(r, z, sparse=sparse)
+    assert G.shape == (1, mesh.n_vertices)
     interpolated = G.dot(vertex_values)
     assert isclose(interpolated, plane(r, z)).all()
+
+
+@pytest.mark.parametrize("sparse", [True, False])
+@pytest.mark.parametrize("R, z", [(ones((2, 1)), ones(2)), (ones(2), ones(3))])
+def test_build_interpolator_matrix_inconsistent_shapes(mesh, sparse, R, z):
+    with pytest.raises(ValueError):
+        mesh.build_interpolator_matrix(R, z, sparse=sparse)
 
 
 def test_interpolate_inconsistent_shapes(mesh):
@@ -141,7 +157,8 @@ def test_find_triangle(mesh):
 
 
 @pytest.mark.parametrize("vertices", [(0, 1, 2), (0, 2, 1)])
-def test_queries_in_cells_contained_by_triangle(vertices):
+@pytest.mark.parametrize("sparse", [True, False])
+def test_queries_in_cells_contained_by_triangle(vertices, sparse):
     mesh = TriangularMesh(
         R=array([0.0, 4.0, 1.0]),
         z=array([0.0, 1.0, 4.0]),
@@ -156,7 +173,7 @@ def test_queries_in_cells_contained_by_triangle(vertices):
 
     assert (mesh.find_triangle(R_test, z_test) == [0, 0, 0, 0, 0, -1, -1]).all()
     assert isclose(mesh.interpolate(R_test, z_test, vertex_values), expected).all()
-    matrix = mesh.build_interpolator_matrix(R_test, z_test)
+    matrix = mesh.build_interpolator_matrix(R_test, z_test, sparse=sparse)
     assert matrix.shape == (R_test.size, mesh.n_vertices)
     assert isclose(matrix @ vertex_values, expected).all()
 
@@ -188,6 +205,26 @@ def test_interpolate_outside_triangle_bounding_box_candidates(missing_value):
 def test_find_triangle_inconsistent_shapes(mesh):
     with pytest.raises(ValueError):
         mesh.find_triangle(ones([2, 1]), ones([2, 3]))
+
+
+def test_uniform_lookup_matches_binary_tree_queries(mesh):
+    assert isinstance(mesh.R_tree, UniformGridLookup)
+    assert isinstance(mesh.z_tree, UniformGridLookup)
+    R_test = uniform(mesh.R_limits[0], mesh.R_limits[1], size=1000)
+    z_test = uniform(mesh.z_limits[0], mesh.z_limits[1], size=1000)
+    values = 3.0 + mesh.R + 2.0 * mesh.z
+    indices = mesh.find_triangle(R_test, z_test)
+    interpolated = mesh.interpolate(R_test, z_test, values)
+    matrix = mesh.build_interpolator_matrix(R_test, z_test, sparse=False)
+
+    mesh.R_tree = BinaryTree(mesh.R_tree.layers, mesh.R_limits)
+    mesh.z_tree = BinaryTree(mesh.z_tree.layers, mesh.z_limits)
+
+    assert (mesh.find_triangle(R_test, z_test) == indices).all()
+    assert isclose(mesh.interpolate(R_test, z_test, values), interpolated).all()
+    assert isclose(
+        mesh.build_interpolator_matrix(R_test, z_test, sparse=False), matrix
+    ).all()
 
 
 def test_plot_field(mesh):

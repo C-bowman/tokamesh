@@ -8,7 +8,6 @@ from tokamesh import TriangularMesh
 from tokamesh.geometry import calculate_geometry_matrix
 from tokamesh.utilities import Camera
 
-
 """
 This script demonstrates that line-integrals over rays through a field
 defined by barycentric interpolation on a mesh are calculated correctly

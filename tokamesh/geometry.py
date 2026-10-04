@@ -539,14 +539,12 @@ class GeometryCalculator:
         # At this point, each ray should have an even number of intersections, if any
         # have an odd number then something has gone wrong, so raise an error.
         if (intersection_count % 2 == 1).any():
-            raise ValueError(
-                f"""\n\n
+            raise ValueError(f"""\n\n
                 \r[ GeometryCalculator error ]
                 \r>> One or more rays has an odd number of intersections with
                 \r>> triangle {tri_index}. This is typically caused by insufficient
                 \r>> floating-point precision in the intersection calculations.
-                """
-            )
+                """)
 
         max_intersections = intersection_count.max()
         for j in range(max_intersections // 2):
@@ -611,27 +609,23 @@ def validate_ray_data(
         ("ray_ends", ray_ends),
     ]:
         if not isinstance(arr, ndarray):
-            raise TypeError(
-                f"""\n\n
+            raise TypeError(f"""\n\n
                 \r[ {error_source} error ]
                 \r>> The '{tag}' argument should have type:
                 \r>> {ndarray}
                 \r>> but instead has type:
                 \r>> {type(arr)}
-                """
-            )
+                """)
 
         float_precision = finfo(arr.dtype).precision
         if float_precision < 15:
-            raise ValueError(
-                f"""\n\n
+            raise ValueError(f"""\n\n
                 \r[ {error_source} error ]
                 \r>> The '{tag}' argument array has a data-type of {arr.dtype}
                 \r>> with a decimal precision of {float_precision}.
                 \r>> Arrays should use at least 64-bit floats, such that the
                 \r>> decimal precision is 15 or above.
-                """
-            )
+                """)
 
     if (
         ray_origins.ndim != 2
@@ -640,13 +634,11 @@ def validate_ray_data(
         or ray_ends.shape[1] != 3
         or ray_ends.shape[0] != ray_origins.shape[0]
     ):
-        raise ValueError(
-            f"""\n\n
+        raise ValueError(f"""\n\n
             \r[ {error_source} error ]
             \r>> 'ray_origins' and 'ray_ends' arguments must be 2-dimensional arrays
             \r>> of shape (M,3), where 'M' is the total number of rays.
-            """
-        )
+            """)
 
 
 def radius_hyperbolic_integral(l1, l2, l_tan, R_tan_sqr, sqrt_q2):
@@ -710,34 +702,28 @@ def linear_geometry_matrix(
 
     # validate the radius axis data
     if not isinstance(R, ndarray):
-        raise TypeError(
-            f"""\n
+        raise TypeError(f"""\n
             \r[ linear_geometry_matrix error ]
             \r>> 'R' argument must have type: 
             \r>> {ndarray}
             \r>> but instead has type:
             \r>> {type(R)}
-            """
-        )
+            """)
 
     # check all shapes of the inputs
     n_points = R.size
     if R.ndim != 1 or R.size < 3:
-        raise ValueError(
-            f"""\n
+        raise ValueError(f"""\n
             \r[ linear_geometry_matrix error ]
             \r>> 'R' argument must have one dimension and at least 3 elements,
             \r>> but instead has {R.ndim} dimensions and {R.size} elements.
-            """
-        )
+            """)
 
     if (R[1:] - R[:-1] <= 0).any():
-        raise ValueError(
-            """\n
+        raise ValueError("""\n
             \r[ linear_geometry_matrix error ]
             \r>> 'R' argument be sorted in ascending order, and contain only unique values.
-            """
-        )
+            """)
 
     # calculate linear basis function coefficients
     grads = zeros([n_points - 1, 2])

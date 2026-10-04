@@ -1,6 +1,7 @@
 from collections import defaultdict
 from numpy import linspace, full, int64, arange, searchsorted, ndarray, zeros
 from numpy import pi, sqrt, dot, array, cross, identity, tan, ptp
+from numpy import asarray, isfinite, integer, subtract
 from itertools import chain, count
 
 
@@ -26,6 +27,57 @@ class BinaryTree:
 
     def lookup_index(self, values: ndarray) -> ndarray:
         return self.indices[searchsorted(self.edges, values)]
+
+
+class UniformGridLookup:
+    """
+    Divide a range into ``2**layers`` uniform cells, with constant-time lookup
+    per value. Cells are open on the left and closed on the right, matching
+    ``BinaryTree``. Out-of-range and nonfinite values receive index -1.
+
+    :param int layers: The number of binary subdivisions of the range.
+    :param limits: Two finite, increasing bounds. Cell edges must be distinct
+        in floating-point arithmetic.
+    """
+
+    def __init__(self, layers: int, limits: tuple[float, float]):
+        if not isinstance(layers, (int, integer)):
+            raise TypeError("layers must be a non-negative integer")
+        if layers < 0:
+            raise ValueError("layers must be a non-negative integer")
+        bounds = asarray(limits, dtype=float)
+        if bounds.shape != (2,) or not isfinite(bounds).all() or bounds[0] >= bounds[1]:
+            raise ValueError("limits must contain two finite, increasing bounds")
+
+        self.layers = int(layers)
+        self.nodes = 2**self.layers
+        self.lims = (float(bounds[0]), float(bounds[1]))
+        self._width = (self.lims[1] - self.lims[0]) / self.nodes
+        if not isfinite(self._width) or self._width <= 0.0:
+            raise ValueError("The cell width must be finite and positive")
+
+        self.edges, step = linspace(limits[0], limits[1], self.nodes + 1, retstep=True)
+        if not (self.edges[1:] > self.edges[:-1]).all():
+            raise ValueError("Cell edges are not distinct at floating-point precision")
+        # Use the same rounded step that generated the stored edges.
+        self._width = float(step)
+        self.mids = self.edges[:-1] + 0.5 * (self.edges[1:] - self.edges[:-1])
+
+    def lookup_index(self, values: ndarray | float) -> ndarray | int64:
+        """Return cell indices with the input shape, or an integer for a scalar."""
+        values = asarray(values, dtype=float)
+        inside = (values > self.lims[0]) & (values <= self.lims[1])
+        scaled = zeros(values.shape)
+        subtract(values, self.lims[0], out=scaled, where=inside)
+        scaled /= self._width
+        # Valid offsets are non-negative, so integer conversion acts as floor.
+        indices = scaled.astype(int64)
+        indices.clip(0, self.nodes - 1, out=indices)
+        # Correct rounding against the stored edges and assign boundaries to the left.
+        indices -= values <= self.edges[indices]
+        indices += values > self.edges[indices + 1]
+        indices[~inside] = -1
+        return indices[()]
 
 
 def build_edge_map(triangles: ndarray):

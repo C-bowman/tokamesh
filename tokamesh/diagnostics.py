@@ -199,15 +199,13 @@ def find_ray_boundary_intersections(
         and ray_origins.shape[1] == ray_directions.shape[1] == 3
     )
     if not valid_rays:
-        raise ValueError(
-            f"""\n
+        raise ValueError(f"""\n
             \r[ find_ray_boundary_intersections error ]
             \r>> 'ray_origins' and 'ray_directions' must both have shape (N, 3)
             \r>> where 'N' is the number of rays. Instead, they have shapes
             \r>> {ray_origins.shape}, {ray_directions.shape}
             \r>> respectively.
-            """
-        )
+            """)
 
     rays = RayCollection(origins=ray_origins, directions=ray_directions)
 
