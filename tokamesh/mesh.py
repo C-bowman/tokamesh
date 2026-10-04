@@ -1,6 +1,6 @@
 from numpy import stack, log2, floor, unique, atleast_1d, ptp
 from numpy import linspace, int64, full, zeros, meshgrid, ndarray
-from numpy import savez, load, array
+from numpy import savez, load, array, isfinite, errstate, result_type
 from scipy.sparse import csr_array
 from itertools import product
 from tokamesh.utilities import UniformGridLookup, build_edge_map
@@ -12,15 +12,18 @@ class TriangularMesh:
     interpolation and plotting.
 
     :param R: \
-        The major radius of each mesh vertex as a 1D numpy array.
+        The major radius of each mesh vertex as a 1D numpy array
+        of finite real numbers.
 
     :param z: \
-        The z-height of each mesh vertex as a 1D numpy array.
+        The z-height of each mesh vertex as a 1D numpy array
+        of finite real numbers.
 
     :param triangles: \
         A 2D numpy array of integers specifying the indices of the vertices which form
         each of the triangles in the mesh. The array must have shape ``(N, 3)`` where
-        ``N`` is the total number of triangles.
+        ``N`` is the total number of triangles. Each triangle
+        must have three distinct vertex indices and a finite, non-zero area.
     """
 
     def __init__(self, R: ndarray, z: ndarray, triangles: ndarray):
@@ -527,6 +530,7 @@ class FieldAlignedMesh(TriangularMesh):
 def validate_mesh_data(
     R: ndarray, z: ndarray, triangles: ndarray, error_source="TriangularMesh"
 ):
+    """Validate mesh arrays, connectivity, and finite, non-zero triangle areas."""
     for name, obj in [("R", R), ("z", z), ("triangles", triangles)]:
         if not isinstance(obj, ndarray):
             raise TypeError(f"""\n
@@ -538,11 +542,30 @@ def validate_mesh_data(
                 """)
 
     for name, obj in [("R", R), ("z", z)]:
-        if obj.ndim > 1:
+        if obj.ndim != 1:
             raise ValueError(f"""\n
                 \r[ {error_source} error ]
                 \r>> The '{name}' argument should be a 1D array,
                 \r>> but instead has shape {obj.shape}.
+                """)
+
+        if obj.size == 0:
+            raise ValueError(f"""\n
+                \r[ {error_source} error ]
+                \r>> The '{name}' argument must not be empty.
+                """)
+
+        if obj.dtype.kind not in "iuf":
+            raise TypeError(f"""\n
+                \r[ {error_source} error ]
+                \r>> The '{name}' argument must have a real numeric dtype,
+                \r>> but instead has dtype {obj.dtype}.
+                """)
+
+        if not isfinite(obj).all():
+            raise ValueError(f"""\n
+                \r[ {error_source} error ]
+                \r>> The '{name}' argument must contain only finite values.
                 """)
 
     if R.size != z.size:
@@ -557,6 +580,19 @@ def validate_mesh_data(
             \r[ {error_source} error ]
             \r>> The 'triangles' argument must have shape (num_triangles, 3)
             \r>> but given array has shape {triangles.shape}.
+            """)
+
+    if triangles.shape[0] == 0:
+        raise ValueError(f"""\n
+            \r[ {error_source} error ]
+            \r>> The 'triangles' argument must contain at least one triangle.
+            """)
+
+    if triangles.dtype.kind not in "iu":
+        raise TypeError(f"""\n
+            \r[ {error_source} error ]
+            \r>> The 'triangles' argument must have an integer dtype,
+            \r>> but instead has dtype {triangles.dtype}.
             """)
 
     valid_indices = triangles.min() >= 0 and triangles.max() < R.size
@@ -578,4 +614,19 @@ def validate_mesh_data(
             \r[ {error_source} error ]
             \r>> At least one triangle specified by the 'triangles' argument
             \r>> contains duplicate vertices.
+            """)
+
+    # Promote before arithmetic to avoid integer overflow in the area check.
+    dtype = result_type(R.dtype, z.dtype, float)
+    R1, R2, R3 = R[triangles].astype(dtype, copy=False).T
+    z1, z2, z3 = z[triangles].astype(dtype, copy=False).T
+    with errstate(over="ignore", invalid="ignore", under="ignore"):
+        areas = 0.5 * ((z2 - z3) * (R1 - R3) + (R3 - R2) * (z1 - z3))
+    valid_areas = isfinite(areas) & (areas != 0.0)
+    if not valid_areas.all():
+        triangle = (~valid_areas).nonzero()[0][0]
+        raise ValueError(f"""\n
+            \r[ {error_source} error ]
+            \r>> Each triangle must have a finite, non-zero area.
+            \r>> Triangle {triangle} has area {areas[triangle]}.
             """)
