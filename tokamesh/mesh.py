@@ -1,6 +1,7 @@
 from numpy import stack, log2, floor, unique, atleast_1d, ptp
 from numpy import linspace, int64, full, zeros, meshgrid, ndarray
 from numpy import savez, load, array
+from scipy.sparse import csr_array
 from itertools import product
 from tokamesh.utilities import UniformGridLookup, build_edge_map
 
@@ -115,36 +116,30 @@ class TriangularMesh:
             The interpolated function values as a numpy array.
         """
         if type(vertex_values) is not ndarray or vertex_values.ndim != 1:
-            raise TypeError(
-                """\n
+            raise TypeError("""\n
                 \r[ TriangularMesh error ]
                 \r>> The 'vertex_values' argument of the TriangularMesh.interpolate
                 \r>> method must have type numpy.ndarray, and have only one dimension.
-                """
-            )
+                """)
 
         if vertex_values.size != self.n_vertices:
-            raise ValueError(
-                f"""\n
+            raise ValueError(f"""\n
                 \r[ TriangularMesh error ]
                 \r>> The size of the 'vertex_values' argument of TriangularMesh.interpolate
                 \r>> must be equal to the number of mesh vertices.
                 \r>> The mesh has {self.n_vertices} vertices but given array is of size {vertex_values.size}.
-                """
-            )
+                """)
 
         R_vals = atleast_1d(R)
         z_vals = atleast_1d(z)
 
         if R_vals.shape != z_vals.shape:
-            raise ValueError(
-                f"""\n
+            raise ValueError(f"""\n
                 \r[ TriangularMesh error ]
                 \r>> The 'R' and 'z' arguments of TriangularMesh.interpolate
                 \r>> have inconsistent shapes:
                 \r>> {R_vals.shape} != {z_vals.shape}
-                """
-            )
+                """)
 
         input_shape = R_vals.shape
         if len(input_shape) > 1:
@@ -199,14 +194,12 @@ class TriangularMesh:
         z_vals = atleast_1d(z)
 
         if R_vals.shape != z_vals.shape:
-            raise ValueError(
-                f"""\n
+            raise ValueError(f"""\n
                 \r[ TriangularMesh error ]
                 \r>> The 'R' and 'z' arguments of TriangularMesh.find_triangle
                 \r>> have inconsistent shapes:
                 \r>> {R_vals.shape} != {z_vals.shape}
-                """
-            )
+                """)
 
         input_shape = R_vals.shape
         if len(input_shape) > 1:
@@ -369,7 +362,9 @@ class TriangularMesh:
         image.resize((shape[1], shape[0]))
         return R_axis, z_axis, image.T
 
-    def build_interpolator_matrix(self, R: ndarray, z: ndarray) -> ndarray:
+    def build_interpolator_matrix(
+        self, R: ndarray, z: ndarray, *, sparse: bool = True
+    ) -> csr_array | ndarray:
         """
         For a given set of points, construct an 'interpolator' matrix, such
         that its product with a vector of field values at each mesh vertex
@@ -381,25 +376,36 @@ class TriangularMesh:
         :param z: \
             The z-height of each interpolation point as a 1D ``numpy.ndarray``.
 
+        :param bool sparse: \
+            If ``True`` (the default), return a ``scipy.sparse.csr_array``,
+            suitable for repeated matrix-vector products. If ``False``, return
+            a dense ``numpy.ndarray``.
+
         :return: \
-            The interpolator matrix as a 2D ``numpy.ndarray`` with a shape of
+            The interpolator matrix as a 2D array with a shape of
             the number of interpolation points by the number of mesh vertices.
+            Each row has at most three nonzero entries; points outside the mesh
+            have entirely zero rows.
         """
         R_vals = atleast_1d(R)
         z_vals = atleast_1d(z)
 
         if R_vals.ndim != 1 or z_vals.ndim != 1 or R_vals.size != z_vals.size:
-            raise ValueError(
-                f"""\n
+            raise ValueError(f"""\n
                 \r[ TriangularMesh error ]
                 \r>> The 'R' and 'z' arguments of build_interpolator_matrix
                 \r>> must be 1D arrays of equal size, however their shapes are
                 \r>> {R_vals.shape}, {z_vals.shape}
                 \r>> respectively.
-                """
-            )
+                """)
 
-        interpolator_matrix = zeros([R_vals.size, self.n_vertices])
+        shape = (R_vals.size, self.n_vertices)
+        if R_vals.size == 0:
+            matrix = csr_array(shape, dtype=float)
+            return matrix if sparse else matrix.toarray()
+
+        vertex_indices = zeros((R_vals.size, 3), dtype=int64)
+        weights = zeros((R_vals.size, 3))
         # lookup sets of coordinates are in each grid cell
         unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
         # loop over each unique grid coordinate
@@ -415,11 +421,22 @@ class TriangularMesh:
                 coords, container_triangles = self.bary_coords(
                     R_vals[cell_indices], z_vals[cell_indices], search_triangles
                 )
-                # get corresponding cell indices for the vertex indices
-                vertex_inds = self.triangle_vertices[container_triangles, :]
-                # insert the coordinate values into the matrix
-                interpolator_matrix[cell_indices[:, None], vertex_inds] = coords
-        return interpolator_matrix
+                inside = container_triangles >= 0
+                rows = cell_indices[inside]
+                vertex_indices[rows] = self.triangle_vertices[
+                    container_triangles[inside]
+                ]
+                weights[rows] = coords[inside]
+
+        row_inds, coord_inds = weights.nonzero()
+        matrix = csr_array(
+            (
+                weights[row_inds, coord_inds],
+                (row_inds, vertex_indices[row_inds, coord_inds]),
+            ),
+            shape=shape,
+        )
+        return matrix if sparse else matrix.toarray()
 
     def save(self, filepath: str):
         """
@@ -512,53 +529,43 @@ def validate_mesh_data(
 ):
     for name, obj in [("R", R), ("z", z), ("triangles", triangles)]:
         if not isinstance(obj, ndarray):
-            raise TypeError(
-                f"""\n
+            raise TypeError(f"""\n
                 \r[ {error_source} error ]
                 \r>> The '{name}' argument should have type:
                 \r>> {ndarray}
                 \r>> but instead has type:
                 \r>> {type(obj)}
-                """
-            )
+                """)
 
     for name, obj in [("R", R), ("z", z)]:
         if obj.ndim > 1:
-            raise ValueError(
-                f"""\n
+            raise ValueError(f"""\n
                 \r[ {error_source} error ]
                 \r>> The '{name}' argument should be a 1D array,
                 \r>> but instead has shape {obj.shape}.
-                """
-            )
+                """)
 
     if R.size != z.size:
-        raise ValueError(
-            f"""\n
+        raise ValueError(f"""\n
             \r[ {error_source} error ]
             \r>> The 'R' and 'z' arguments should be of equal size, but
             \r>> have sizes {R.size} and {z.size} respectively.
-            """
-        )
+            """)
 
     if triangles.ndim != 2 or triangles.shape[1] != 3:
-        raise ValueError(
-            f"""\n
+        raise ValueError(f"""\n
             \r[ {error_source} error ]
             \r>> The 'triangles' argument must have shape (num_triangles, 3)
             \r>> but given array has shape {triangles.shape}.
-            """
-        )
+            """)
 
     valid_indices = triangles.min() >= 0 and triangles.max() < R.size
     if not valid_indices:
-        raise ValueError(
-            f"""\n
+        raise ValueError(f"""\n
             \r[ {error_source} error ]
             \r>> All values in the 'triangles' array must be integers in the range:
             \r>> (0, n_vertices - 1)
-            """
-        )
+            """)
 
     # check for duplicated vertex indices
     duplicates = (
@@ -567,10 +574,8 @@ def validate_mesh_data(
         or (triangles[:, 0] == triangles[:, 2]).any()
     )
     if duplicates:
-        raise ValueError(
-            f"""\n
+        raise ValueError(f"""\n
             \r[ {error_source} error ]
             \r>> At least one triangle specified by the 'triangles' argument
             \r>> contains duplicate vertices.
-            """
-        )
+            """)
