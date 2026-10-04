@@ -140,6 +140,51 @@ def test_find_triangle(mesh):
     # points just outside the boundary of the mesh to check.
 
 
+@pytest.mark.parametrize("vertices", [(0, 1, 2), (0, 2, 1)])
+def test_queries_in_cells_contained_by_triangle(vertices):
+    mesh = TriangularMesh(
+        R=array([0.0, 4.0, 1.0]),
+        z=array([0.0, 1.0, 4.0]),
+        triangles=array([vertices]),
+    )
+    # The cell [1, 2] x [1, 2] is strictly inside the triangle.
+    R_test = array([0.25, 1.25, 1.5, 1.75, 2.0, 3.5, 5.0])
+    z_test = array([0.25, 1.75, 1.5, 1.25, 2.0, 3.5, 1.0])
+    vertex_values = 3.0 + mesh.R + 2.0 * mesh.z
+    expected = 3.0 + R_test + 2.0 * z_test
+    expected[-2:] = 0.0
+
+    assert (mesh.find_triangle(R_test, z_test) == [0, 0, 0, 0, 0, -1, -1]).all()
+    assert isclose(mesh.interpolate(R_test, z_test, vertex_values), expected).all()
+    matrix = mesh.build_interpolator_matrix(R_test, z_test)
+    assert matrix.shape == (R_test.size, mesh.n_vertices)
+    assert isclose(matrix @ vertex_values, expected).all()
+
+
+def test_triangle_candidates_on_cell_boundaries():
+    mesh = TriangularMesh(
+        R=array([0.0, 4.0, 0.0, 4.0]),
+        z=array([0.0, 0.0, 4.0, 4.0]),
+        triangles=array([[0, 1, 2], [1, 3, 2]]),
+    )
+    R_test = array([1.0, 2.0, 3.0, 4.0, 1.0])
+    z_test = array([1.0, 2.0, 3.0, 1.0, 4.0])
+
+    assert (mesh.find_triangle(R_test, z_test) == [0, 1, 1, 1, 1]).all()
+
+
+@pytest.mark.parametrize("missing_value", [float("nan"), float("inf")])
+def test_interpolate_outside_triangle_bounding_box_candidates(missing_value):
+    mesh = TriangularMesh(
+        R=array([0.0, 4.0, 1.0]),
+        z=array([0.0, 1.0, 4.0]),
+        triangles=array([[0, 1, 2]]),
+    )
+    vertex_values = array([missing_value, 1.0, 1.0])
+
+    assert mesh.interpolate(3.5, 3.5, vertex_values)[0] == 0.0
+
+
 def test_find_triangle_inconsistent_shapes(mesh):
     with pytest.raises(ValueError):
         mesh.find_triangle(ones([2, 1]), ones([2, 3]))

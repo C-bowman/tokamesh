@@ -1,8 +1,7 @@
 from numpy import stack, log2, floor, unique, atleast_1d, ptp
 from numpy import linspace, int64, full, zeros, meshgrid, ndarray
-from numpy import savez, load
+from numpy import savez, load, array
 from itertools import product
-from tokamesh.intersection import edge_rectangle_intersection
 from tokamesh.utilities import BinaryTree, build_edge_map
 
 
@@ -65,11 +64,13 @@ class TriangularMesh:
     def build_binary_trees(self):
         # we now divide the bounding rectangle of the mesh into
         # a rectangular grid, and create a mapping between each
-        # grid cell and all triangles which intersect it.
+        # grid cell and candidate triangles whose bounding boxes overlap it.
 
         # find an appropriate depth for each tree
-        R_extent = ptp(self.R[self.triangle_vertices], axis=1).mean()
-        z_extent = ptp(self.z[self.triangle_vertices], axis=1).mean()
+        R_vertices = self.R[self.triangle_vertices]
+        z_vertices = self.z[self.triangle_vertices]
+        R_extent = ptp(R_vertices, axis=1).mean()
+        z_extent = ptp(z_vertices, axis=1).mean()
         R_depth = max(
             int(floor(log2((self.R_limits[1] - self.R_limits[0]) / R_extent))), 2
         )
@@ -80,24 +81,20 @@ class TriangularMesh:
         self.R_tree = BinaryTree(R_depth, self.R_limits)
         self.z_tree = BinaryTree(z_depth, self.z_limits)
 
-        # now build a map between rectangle centres and a list of
-        # all triangles which intersect that rectangle
-        self.tree_map = {}
-        for i, j in product(range(self.R_tree.nodes), range(self.z_tree.nodes)):
-            # limits of the rectangle
-            R_lims = self.R_tree.edges[i : i + 2]
-            z_lims = self.z_tree.edges[j : j + 2]
-            # find all edges which intersect the rectangle
-            edge_inds = edge_rectangle_intersection(
-                R_lims, z_lims, self.R_edges, self.z_edges
-            )
-            edge_bools = zeros(self.n_edges, dtype=int64)
-            edge_bools[edge_inds] = 1
-            # use this to find which triangles intersect the rectangle
-            triangle_bools = edge_bools[self.triangle_edges].any(axis=1)
-            # add the indices of these triangles to the dict
-            if triangle_bools.any():
-                self.tree_map[(i, j)] = triangle_bools.nonzero()[0]
+        # Lower-limit vertices have lookup index -1; their bounding boxes start in cell 0.
+        R_indices = self.R_tree.lookup_index(R_vertices).clip(min=0)
+        z_indices = self.z_tree.lookup_index(z_vertices).clip(min=0)
+        tree_map: dict[tuple[int, int], list[int]] = {}
+        for triangle, (R_cells, z_cells) in enumerate(zip(R_indices, z_indices)):
+            for cell in product(
+                range(R_cells.min(), R_cells.max() + 1),
+                range(z_cells.min(), z_cells.max() + 1),
+            ):
+                tree_map.setdefault(cell, []).append(triangle)
+
+        self.tree_map = {
+            cell: array(triangles, dtype=int64) for cell, triangles in tree_map.items()
+        }
 
     def interpolate(self, R: ndarray, z: ndarray, vertex_values: ndarray) -> ndarray:
         """
@@ -159,10 +156,10 @@ class TriangularMesh:
         # loop over each unique grid coordinate
         interpolated_values = zeros(R_vals.size)
         for v, slc in zip(unique_coords, slices):
-            # only need to proceed if the current coordinate contains triangles
+            # only need to proceed if the current coordinate has candidates
             key = (v[0], v[1])
             if key in self.tree_map:
-                # get triangles intersecting this cell
+                # get candidate triangles for this cell
                 search_triangles = self.tree_map[key]
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
@@ -170,11 +167,16 @@ class TriangularMesh:
                 coords, container_triangles = self.bary_coords(
                     R_vals[cell_indices], z_vals[cell_indices], search_triangles
                 )
-                # get the values of the vertices for the triangles which contain the points
-                vals = vertex_values[self.triangle_vertices[container_triangles, :]]
+                # Only gather vertex values for points contained in a triangle.
+                inside = container_triangles >= 0
+                vals = vertex_values[
+                    self.triangle_vertices[container_triangles[inside], :]
+                ]
                 # take the dot-product of the coordinates and the vertex
                 # values to get the interpolated value
-                interpolated_values[cell_indices] = (coords * vals).sum(axis=1)
+                interpolated_values[cell_indices[inside]] = (coords[inside] * vals).sum(
+                    axis=1
+                )
         if len(input_shape) > 1:
             interpolated_values.resize(input_shape)
         return interpolated_values
@@ -216,10 +218,10 @@ class TriangularMesh:
         # loop over each unique grid coordinate
         triangle_indices = full(R_vals.size, fill_value=-1, dtype=int)
         for v, slc in zip(unique_coords, slices):
-            # only need to proceed if the current coordinate contains triangles
+            # only need to proceed if the current coordinate has candidates
             key = (v[0], v[1])
             if key in self.tree_map:
-                # get triangles intersecting this cell
+                # get candidate triangles for this cell
                 search_triangles = self.tree_map[key]
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
@@ -402,10 +404,10 @@ class TriangularMesh:
         unique_coords, slices, indices = self.grid_lookup(R_vals, z_vals)
         # loop over each unique grid coordinate
         for v, slc in zip(unique_coords, slices):
-            # only need to proceed if the current coordinate contains triangles
+            # only need to proceed if the current coordinate has candidates
             key = (v[0], v[1])
             if key in self.tree_map:
-                # get triangles intersecting this cell
+                # get candidate triangles for this cell
                 search_triangles = self.tree_map[key]
                 cell_indices = indices[slc]  # the indices of points inside this cell
                 # get the barycentric coord values of each point, and the
