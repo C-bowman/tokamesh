@@ -353,7 +353,7 @@ class TriangularMesh:
             the mesh are assigned a value of zero.
         """
         R_pad = (self.R_limits[1] - self.R_limits[0]) * pad_fraction
-        z_pad = (self.R_limits[1] - self.R_limits[0]) * pad_fraction
+        z_pad = (self.z_limits[1] - self.z_limits[0]) * pad_fraction
 
         R_axis = linspace(self.R_limits[0] - R_pad, self.R_limits[1] + R_pad, shape[0])
         z_axis = linspace(self.z_limits[0] - z_pad, self.z_limits[1] + z_pad, shape[1])
