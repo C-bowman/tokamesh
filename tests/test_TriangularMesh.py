@@ -2,7 +2,7 @@ import pytest
 from numpy import arange, array, sin, cos, pi, isclose, ones, sqrt, sinc, zeros
 from numpy.random import uniform, seed, multivariate_normal
 from tokamesh import TriangularMesh
-from tokamesh.utilities import BinaryTree
+from tokamesh.utilities import BinaryTree, UniformGridLookup
 from tokamesh.construction import equilateral_mesh
 import matplotlib.pyplot as plt
 from hypothesis import given, strategies as st
@@ -188,6 +188,24 @@ def test_interpolate_outside_triangle_bounding_box_candidates(missing_value):
 def test_find_triangle_inconsistent_shapes(mesh):
     with pytest.raises(ValueError):
         mesh.find_triangle(ones([2, 1]), ones([2, 3]))
+
+
+def test_uniform_lookup_matches_binary_tree_queries(mesh):
+    assert isinstance(mesh.R_tree, UniformGridLookup)
+    assert isinstance(mesh.z_tree, UniformGridLookup)
+    R_test = uniform(mesh.R_limits[0], mesh.R_limits[1], size=1000)
+    z_test = uniform(mesh.z_limits[0], mesh.z_limits[1], size=1000)
+    values = 3.0 + mesh.R + 2.0 * mesh.z
+    indices = mesh.find_triangle(R_test, z_test)
+    interpolated = mesh.interpolate(R_test, z_test, values)
+    matrix = mesh.build_interpolator_matrix(R_test, z_test)
+
+    mesh.R_tree = BinaryTree(mesh.R_tree.layers, mesh.R_limits)
+    mesh.z_tree = BinaryTree(mesh.z_tree.layers, mesh.z_limits)
+
+    assert (mesh.find_triangle(R_test, z_test) == indices).all()
+    assert isclose(mesh.interpolate(R_test, z_test, values), interpolated).all()
+    assert isclose(mesh.build_interpolator_matrix(R_test, z_test), matrix).all()
 
 
 def test_plot_field(mesh):

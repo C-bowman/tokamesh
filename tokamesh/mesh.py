@@ -2,7 +2,7 @@ from numpy import stack, log2, floor, unique, atleast_1d, ptp
 from numpy import linspace, int64, full, zeros, meshgrid, ndarray
 from numpy import savez, load, array
 from itertools import product
-from tokamesh.utilities import BinaryTree, build_edge_map
+from tokamesh.utilities import UniformGridLookup, build_edge_map
 
 
 class TriangularMesh:
@@ -66,7 +66,7 @@ class TriangularMesh:
         # a rectangular grid, and create a mapping between each
         # grid cell and candidate triangles whose bounding boxes overlap it.
 
-        # find an appropriate depth for each tree
+        # find an appropriate subdivision depth for each axis
         R_vertices = self.R[self.triangle_vertices]
         z_vertices = self.z[self.triangle_vertices]
         R_extent = ptp(R_vertices, axis=1).mean()
@@ -77,9 +77,9 @@ class TriangularMesh:
         z_depth = max(
             int(floor(log2((self.z_limits[1] - self.z_limits[0]) / z_extent))), 2
         )
-        # build binary trees for each axis
-        self.R_tree = BinaryTree(R_depth, self.R_limits)
-        self.z_tree = BinaryTree(z_depth, self.z_limits)
+        # Keep the existing attribute names for the uniform axis lookups.
+        self.R_tree = UniformGridLookup(R_depth, self.R_limits)
+        self.z_tree = UniformGridLookup(z_depth, self.z_limits)
 
         # Lower-limit vertices have lookup index -1; their bounding boxes start in cell 0.
         R_indices = self.R_tree.lookup_index(R_vertices).clip(min=0)
@@ -235,7 +235,7 @@ class TriangularMesh:
         return triangle_indices
 
     def grid_lookup(self, R: ndarray, z: ndarray):
-        # first determine in which cell each point lies using the binary trees
+        # first determine in which cell each point lies using the uniform lookups
         grid_coords = zeros([R.size, 2], dtype=int)
         grid_coords[:, 0] = self.R_tree.lookup_index(R)
         grid_coords[:, 1] = self.z_tree.lookup_index(z)

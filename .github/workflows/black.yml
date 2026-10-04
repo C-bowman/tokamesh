@@ -12,12 +12,14 @@ defaults:
 jobs:
   black:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         ref: ${{ github.head_ref }}
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.x
     - name: Install black
@@ -31,6 +33,6 @@ jobs:
     - name: Run black
       run: |
         black .
-    - uses: stefanzweifel/git-auto-commit-action@v4
+    - uses: stefanzweifel/git-auto-commit-action@v7
       with:
         commit_message: "[skip ci] Apply black changes"

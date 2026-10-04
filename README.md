@@ -32,5 +32,11 @@ so can be easily installed using [pip](https://pip.pypa.io/en/stable/) as follow
 pip install tokamesh
 ```
 
+### Testing
+The CI matrix covers Python 3.10 through 3.14. The Python 3.14 job builds the
+optional `triangle` dependency from the pinned upstream 20250106 release because
+PyPI does not provide a compatible wheel or source distribution.
+See the [test workflow](.github/workflows/tests.yml) for the installation steps.
+
 ### Documentation
 The package documentation is available at [tokamesh.readthedocs.io](https://tokamesh.readthedocs.io/en/latest/).
