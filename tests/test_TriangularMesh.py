@@ -125,7 +125,6 @@ def test_build_interpolator_matrix_inconsistent_shapes(mesh, sparse, R, z):
         mesh.build_interpolator_matrix(R, z, sparse=sparse)
 
 
-
 def test_interpolate_inconsistent_shapes(mesh):
     with pytest.raises(ValueError):
         mesh.interpolate(ones([2, 1]), ones([2, 3]), ones(mesh.n_vertices))

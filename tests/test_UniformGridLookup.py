@@ -53,14 +53,16 @@ def test_uniform_grid_scalar(limits, value, layers):
 
 
 @pytest.mark.parametrize("layers", [0, 1, 3, 5])
-@pytest.mark.parametrize(
-    "limits", [(np.float32(0), np.float32(1e-43)), (0.0, 1e-320)]
-)
+@pytest.mark.parametrize("limits", [(np.float32(0), np.float32(1e-43)), (0.0, 1e-320)])
 def test_uniform_grid_subnormal_steps(layers, limits):
     grid = UniformGridLookup(layers, limits)
     tree = BinaryTree(layers, limits)
     values = np.concatenate(
-        [tree.edges, np.nextafter(tree.edges, -np.inf), np.nextafter(tree.edges, np.inf)]
+        [
+            tree.edges,
+            np.nextafter(tree.edges, -np.inf),
+            np.nextafter(tree.edges, np.inf),
+        ]
     )
 
     np.testing.assert_array_equal(grid.lookup_index(values), tree.lookup_index(values))

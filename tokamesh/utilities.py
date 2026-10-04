@@ -56,9 +56,7 @@ class UniformGridLookup:
         if not isfinite(self._width) or self._width <= 0.0:
             raise ValueError("The cell width must be finite and positive")
 
-        self.edges, step = linspace(
-            limits[0], limits[1], self.nodes + 1, retstep=True
-        )
+        self.edges, step = linspace(limits[0], limits[1], self.nodes + 1, retstep=True)
         if not (self.edges[1:] > self.edges[:-1]).all():
             raise ValueError("Cell edges are not distinct at floating-point precision")
         # Use the same rounded step that generated the stored edges.

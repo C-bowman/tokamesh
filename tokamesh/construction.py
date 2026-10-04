@@ -143,25 +143,21 @@ class Polygon:
         self.y = array(y)
 
         if self.x.ndim != 1 or self.y.ndim != 1 or self.x.size != self.y.size:
-            raise ValueError(
-                f"""\n
+            raise ValueError(f"""\n
                 \r[ Polygon error ]
                 \r>> The given 'x' and 'y' arguments should be 1D arrays
                 \r>> of equal size, but have shapes:
                 \r>> {self.x.shape} and {self.y.shape}
                 \r>> respectively.
-                """
-            )
+                """)
 
         if self.x.size < 3:
-            raise ValueError(
-                f"""\n
+            raise ValueError(f"""\n
                 \r[ Polygon error ]
                 \r>> The given 'x' and 'y' arguments must specify at least
                 \r>> 3 vertices to form a valid polygon, but only {self.x.size}
                 \r>> were given.
-                """
-            )
+                """)
 
         if (self.x[0] != self.x[-1]) or (self.y[0] != self.y[-1]):
             self.x = concatenate([self.x, atleast_1d(self.x[0])])
@@ -305,15 +301,13 @@ def find_boundaries(triangles: ndarray) -> list[ndarray]:
 
     _, edges_per_vertex = unique(boundary_edges, return_counts=True)
     if edges_per_vertex.max() > 2:
-        warn(
-            """\n
+        warn("""\n
             \r[ find_boundaries warning ]
             \r>> The given mesh contains at least two sub-meshes which
             \r>> are connected by only one vertex. Currently, it is not
             \r>> guaranteed that find_boundaries will draw separate
             \r>> boundaries for each sub-mesh.
-            """
-        )
+            """)
 
     # now create a map between an edge, and the other edges to which it's connected
     boundary_connections = map_edge_connections(boundary_edges)
@@ -729,16 +723,14 @@ def build_edge_mesh(
     try:
         from triangle import triangulate
     except ModuleNotFoundError:
-        raise ModuleNotFoundError(
-            """\n
+        raise ModuleNotFoundError("""\n
             \r[ tokamesh error ]
             \r>> Generating irregular triangular meshes relies on the 'triangle'
             \r>> python package, which is an optional dependency of tokamesh.
             \r>> Either install 'triangle' directly, or install tokamesh using
             \r>> the triangle optional dependency like so:
             \r>> pip install tokamesh[triangle]
-            """
-        )
+            """)
     triangle_outputs = triangulate(triangle_inputs, options)
     triangles = triangle_outputs["triangles"]
     vertices = triangle_outputs["vertices"]

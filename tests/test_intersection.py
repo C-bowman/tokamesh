@@ -16,7 +16,10 @@ import pytest
         ((-1, -1), (1, 0)),  # Left, horizontal
         ((-3, -2), (0.5, 0.5)),  # Left, vertical
         ((-1, 0.25), (0.25, 2)),  # Overlapping bounds, but misses the top-left corner
-        ((0.75, 2), (-1, 0.75)),  # Overlapping bounds, but misses the bottom-right corner
+        (
+            (0.75, 2),
+            (-1, 0.75),
+        ),  # Overlapping bounds, but misses the bottom-right corner
     ],
 )
 def test_edge_rectangle_intersection_on_axis_square_no_intersection(R_edges, z_edges):
