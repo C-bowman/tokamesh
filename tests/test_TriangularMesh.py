@@ -131,13 +131,15 @@ def test_interpolation_on_vertices_and_edges(sparse, R_offset, z_offset):
 
     R_midedge = array([1.0, 1.45, 1.0, 0.55, 1.0]) + R_offset
     z_midedge = array([-1.75, -1.3, -0.85, -1.3, -1.3]) + z_offset
-    expected_edges = array([
-        [0.5, 0.5, 0.0, 0.0],
-        [0.0, 0.5, 0.5, 0.0],
-        [0.0, 0.0, 0.5, 0.5],
-        [0.5, 0.0, 0.0, 0.5],
-        [0.5, 0.0, 0.5, 0.0],
-    ])
+    expected_edges = array(
+        [
+            [0.5, 0.5, 0.0, 0.0],
+            [0.0, 0.5, 0.5, 0.0],
+            [0.0, 0.0, 0.5, 0.5],
+            [0.5, 0.0, 0.0, 0.5],
+            [0.5, 0.0, 0.5, 0.0],
+        ]
+    )
     vertex_values = array([2.0, 5.0, 11.0, 17.0])
 
     for R_test, z_test, expected in [
@@ -162,23 +164,29 @@ def test_interpolation_just_outside_mesh_bounds(sparse, R_offset, z_offset):
         z=array([0.0, 0.0, 1.0, 1.0]) + z_offset,
         triangles=array([[0, 1, 2], [0, 2, 3]]),
     )
-    R_test = array([
-        nextafter(R_offset, -inf),
-        nextafter(R_offset + 1.0, inf),
-        R_offset + 0.5,
-        R_offset + 0.5,
-    ])
-    z_test = array([
-        z_offset + 0.5,
-        z_offset + 0.5,
-        nextafter(z_offset, -inf),
-        nextafter(z_offset + 1.0, inf),
-    ])
+    R_test = array(
+        [
+            nextafter(R_offset, -inf),
+            nextafter(R_offset + 1.0, inf),
+            R_offset + 0.5,
+            R_offset + 0.5,
+        ]
+    )
+    z_test = array(
+        [
+            z_offset + 0.5,
+            z_offset + 0.5,
+            nextafter(z_offset, -inf),
+            nextafter(z_offset + 1.0, inf),
+        ]
+    )
 
     matrix = mesh.build_interpolator_matrix(R_test, z_test, sparse=sparse)
     dense = matrix.toarray() if isinstance(matrix, csr_array) else matrix
     assert_array_equal(dense, zeros((4, 4)))
-    assert_array_equal(mesh.interpolate(R_test, z_test, array([2., 5., 11., 17.])), zeros(4))
+    assert_array_equal(
+        mesh.interpolate(R_test, z_test, array([2.0, 5.0, 11.0, 17.0])), zeros(4)
+    )
     assert_array_equal(mesh.find_triangle(R_test, z_test), [-1, -1, -1, -1])
 
 
