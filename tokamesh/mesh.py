@@ -36,19 +36,13 @@ class TriangularMesh:
         self.n_vertices = self.R.size
         self.n_triangles = self.triangle_vertices.shape[0]
 
-        # pre-calculate barycentric coordinate coefficients for each triangle
+        # Cache triangle-local geometry for barycentric coordinate calculations.
         R1, R2, R3 = [self.R[self.triangle_vertices[:, k]] for k in range(3)]
         z1, z2, z3 = [self.z[self.triangle_vertices[:, k]] for k in range(3)]
         self.area = 0.5 * ((z2 - z3) * (R1 - R3) + (R3 - R2) * (z1 - z3))
-        self.lam1_coeffs = (
-            0.5
-            * stack([z2 - z3, R3 - R2, R2 * z3 - R3 * z2], axis=1)
-            / self.area[:, None]
-        )
-        self.lam2_coeffs = (
-            0.5
-            * stack([z3 - z1, R1 - R3, R3 * z1 - R1 * z3], axis=1)
-            / self.area[:, None]
+        self._barycentric_geometry = stack(
+            [R3, z3, z2 - z3, R3 - R2, z3 - z1, R1 - R3, 2 * self.area],
+            axis=1,
         )
 
         # Construct a mapping from triangles to edges, and edges to vertices
@@ -235,6 +229,9 @@ class TriangularMesh:
         grid_coords = zeros([R.size, 2], dtype=int)
         grid_coords[:, 0] = self.R_tree.lookup_index(R)
         grid_coords[:, 1] = self.z_tree.lookup_index(z)
+        # Mesh boundaries are inclusive, unlike the axis lookups' lower limits.
+        grid_coords[R == self.R_limits[0], 0] = 0
+        grid_coords[z == self.z_limits[0], 1] = 0
         # find the set of unique grid coordinates
         unique_coords, inverse, counts = unique(
             grid_coords, axis=0, return_inverse=True, return_counts=True
@@ -250,9 +247,14 @@ class TriangularMesh:
         return unique_coords, slices, indices
 
     def bary_coords(self, R, z, search_triangles):
-        Q = stack([atleast_1d(R), atleast_1d(z), full(R.size, fill_value=1.0)], axis=0)
-        lam1 = self.lam1_coeffs[search_triangles, :].dot(Q)
-        lam2 = self.lam2_coeffs[search_triangles, :].dot(Q)
+        geometry = self._barycentric_geometry[search_triangles].T
+        R3, z3, lam1_R, lam1_z, lam2_R, lam2_z, twice_area = geometry
+        # Translate before evaluating determinants to avoid cancellation at vertices.
+        dR = atleast_1d(R)[None, :] - R3[:, None]
+        dz = atleast_1d(z)[None, :] - z3[:, None]
+        twice_area = twice_area[:, None]
+        lam1 = (lam1_R[:, None] * dR + lam1_z[:, None] * dz) / twice_area
+        lam2 = (lam2_R[:, None] * dR + lam2_z[:, None] * dz) / twice_area
         lam3 = 1 - lam1 - lam2
         bools = (lam1 >= 0.0) & (lam2 >= 0.0) & (lam3 >= 0.0)
         i1, i2 = bools.nonzero()

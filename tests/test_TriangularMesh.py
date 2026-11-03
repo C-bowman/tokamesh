@@ -1,6 +1,8 @@
 import pytest
 from numpy import arange, array, sin, cos, pi, isclose, ones, sqrt, sinc, zeros, ndarray
+from numpy import eye, inf, nextafter
 from numpy.random import uniform, seed, multivariate_normal
+from numpy.testing import assert_allclose, assert_array_equal
 from scipy.sparse import csr_array
 from tokamesh import TriangularMesh
 from tokamesh.utilities import BinaryTree, UniformGridLookup
@@ -116,6 +118,68 @@ def test_build_interpolator_matrix(mesh, sparse):
     assert G.shape == (1, mesh.n_vertices)
     interpolated = G.dot(vertex_values)
     assert isclose(interpolated, plane(r, z)).all()
+
+
+@pytest.mark.parametrize("sparse", [True, False])
+@pytest.mark.parametrize("R_offset, z_offset", [(0.0, 0.0), (-2.0, 3.0)])
+def test_interpolation_on_vertices_and_edges(sparse, R_offset, z_offset):
+    R = array([0.55, 1.45, 1.45, 0.55]) + R_offset
+    z = array([-1.75, -1.75, -0.85, -0.85]) + z_offset
+    triangles = array([[0, 1, 2], [0, 2, 3]])
+
+    mesh = TriangularMesh(R=R, z=z, triangles=triangles)
+
+    R_midedge = array([1.0, 1.45, 1.0, 0.55, 1.0]) + R_offset
+    z_midedge = array([-1.75, -1.3, -0.85, -1.3, -1.3]) + z_offset
+    expected_edges = array([
+        [0.5, 0.5, 0.0, 0.0],
+        [0.0, 0.5, 0.5, 0.0],
+        [0.0, 0.0, 0.5, 0.5],
+        [0.5, 0.0, 0.0, 0.5],
+        [0.5, 0.0, 0.5, 0.0],
+    ])
+    vertex_values = array([2.0, 5.0, 11.0, 17.0])
+
+    for R_test, z_test, expected in [
+        (R, z, eye(4)),
+        (R_midedge, z_midedge, expected_edges),
+    ]:
+        matrix = mesh.build_interpolator_matrix(R_test, z_test, sparse=sparse)
+        assert isinstance(matrix, csr_array) == sparse
+        dense = matrix.toarray() if isinstance(matrix, csr_array) else matrix
+        assert_allclose(dense, expected, atol=1e-15)
+        assert_allclose(
+            mesh.interpolate(R_test, z_test, vertex_values), expected @ vertex_values
+        )
+        assert (mesh.find_triangle(R_test, z_test) >= 0).all()
+
+
+@pytest.mark.parametrize("sparse", [True, False])
+@pytest.mark.parametrize("R_offset, z_offset", [(0.0, 0.0), (-2.0, 3.0)])
+def test_interpolation_just_outside_mesh_bounds(sparse, R_offset, z_offset):
+    mesh = TriangularMesh(
+        R=array([0.0, 1.0, 1.0, 0.0]) + R_offset,
+        z=array([0.0, 0.0, 1.0, 1.0]) + z_offset,
+        triangles=array([[0, 1, 2], [0, 2, 3]]),
+    )
+    R_test = array([
+        nextafter(R_offset, -inf),
+        nextafter(R_offset + 1.0, inf),
+        R_offset + 0.5,
+        R_offset + 0.5,
+    ])
+    z_test = array([
+        z_offset + 0.5,
+        z_offset + 0.5,
+        nextafter(z_offset, -inf),
+        nextafter(z_offset + 1.0, inf),
+    ])
+
+    matrix = mesh.build_interpolator_matrix(R_test, z_test, sparse=sparse)
+    dense = matrix.toarray() if isinstance(matrix, csr_array) else matrix
+    assert_array_equal(dense, zeros((4, 4)))
+    assert_array_equal(mesh.interpolate(R_test, z_test, array([2., 5., 11., 17.])), zeros(4))
+    assert_array_equal(mesh.find_triangle(R_test, z_test), [-1, -1, -1, -1])
 
 
 @pytest.mark.parametrize("sparse", [True, False])
