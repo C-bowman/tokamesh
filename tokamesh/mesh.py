@@ -5,7 +5,6 @@ from scipy.sparse import csr_array
 from itertools import product
 from tokamesh.utilities import UniformGridLookup, build_edge_map
 
-
 _BARYCENTRIC_TOLERANCE = 64 * finfo(float).eps
 
 
