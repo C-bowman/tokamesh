@@ -123,14 +123,17 @@ def test_build_interpolator_matrix(mesh, sparse):
 @pytest.mark.parametrize("sparse", [True, False])
 @pytest.mark.parametrize("R_offset, z_offset", [(0.0, 0.0), (-2.0, 3.0)])
 def test_interpolation_on_vertices_and_edges(sparse, R_offset, z_offset):
-    R = array([0.55, 1.45, 1.45, 0.55]) + R_offset
-    z = array([-1.75, -1.75, -0.85, -0.85]) + z_offset
+    R = array([0.56, 1.41, 1.47, 0.52]) + R_offset
+    z = array([-1.77, -1.67, -0.9, -0.83]) + z_offset
     triangles = array([[0, 1, 2], [0, 2, 3]])
 
     mesh = TriangularMesh(R=R, z=z, triangles=triangles)
 
-    R_midedge = array([1.0, 1.45, 1.0, 0.55, 1.0]) + R_offset
-    z_midedge = array([-1.75, -1.3, -0.85, -1.3, -1.3]) + z_offset
+    edges = array([[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [0, 2]])
+    # The non-midpoint interior-edge query is rejected by exact containment checks.
+    fractions = array([0.5, 0.5, 0.5, 0.5, 0.5, 0.9])
+    R_edge = (1 - fractions) * R[edges[:, 0]] + fractions * R[edges[:, 1]]
+    z_edge = (1 - fractions) * z[edges[:, 0]] + fractions * z[edges[:, 1]]
     expected_edges = array(
         [
             [0.5, 0.5, 0.0, 0.0],
@@ -138,22 +141,55 @@ def test_interpolation_on_vertices_and_edges(sparse, R_offset, z_offset):
             [0.0, 0.0, 0.5, 0.5],
             [0.5, 0.0, 0.0, 0.5],
             [0.5, 0.0, 0.5, 0.0],
+            [0.1, 0.0, 0.9, 0.0],
         ]
     )
     vertex_values = array([2.0, 5.0, 11.0, 17.0])
 
     for R_test, z_test, expected in [
         (R, z, eye(4)),
-        (R_midedge, z_midedge, expected_edges),
+        (R_edge, z_edge, expected_edges),
     ]:
         matrix = mesh.build_interpolator_matrix(R_test, z_test, sparse=sparse)
         assert isinstance(matrix, csr_array) == sparse
         dense = matrix.toarray() if isinstance(matrix, csr_array) else matrix
         assert_allclose(dense, expected, atol=1e-15)
+        assert (dense >= 0.0).all()
+        assert_allclose(dense.sum(axis=1), 1.0, rtol=0.0, atol=1e-15)
         assert_allclose(
             mesh.interpolate(R_test, z_test, vertex_values), expected @ vertex_values
         )
+        assert_allclose(
+            mesh.interpolate(R_test, z_test, ones(4)), 1.0, rtol=0.0, atol=1e-15
+        )
         assert (mesh.find_triangle(R_test, z_test) >= 0).all()
+
+
+@pytest.mark.parametrize("vertices", [(0, 1, 2), (0, 2, 1)])
+@pytest.mark.parametrize("sparse", [True, False])
+def test_interpolation_near_sloping_boundary(vertices, sparse):
+    mesh = TriangularMesh(
+        R=array([0.0, 1.0, 0.0]),
+        z=array([0.0, 0.0, 1.0]),
+        triangles=array([vertices]),
+    )
+    R_test = array([0.5, 0.5, 0.5])
+    z_test = array([0.5, 0.5 + 2**-48, 0.5 + 2**-44])
+    expected = array([[0.0, 0.5, 0.5], [0.0, 0.5, 0.5], [0.0, 0.0, 0.0]])
+    vertex_values = array([2.0, 5.0, 11.0])
+
+    matrix = mesh.build_interpolator_matrix(R_test, z_test, sparse=sparse)
+    dense = matrix.toarray() if isinstance(matrix, csr_array) else matrix
+    assert_allclose(dense, expected, rtol=0.0, atol=1e-14)
+    assert (dense >= 0.0).all()
+    assert_allclose(dense.sum(axis=1), [1.0, 1.0, 0.0], rtol=0.0, atol=1e-15)
+    assert_allclose(
+        mesh.interpolate(R_test, z_test, vertex_values),
+        expected @ vertex_values,
+        rtol=0.0,
+        atol=1e-13,
+    )
+    assert_array_equal(mesh.find_triangle(R_test, z_test), [0, 0, -1])
 
 
 @pytest.mark.parametrize("sparse", [True, False])

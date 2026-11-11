@@ -1,9 +1,12 @@
 from numpy import stack, log2, floor, unique, atleast_1d, ptp
 from numpy import linspace, int64, full, zeros, meshgrid, ndarray
-from numpy import savez, load, array, isfinite, errstate, result_type
+from numpy import savez, load, array, isfinite, errstate, result_type, finfo
 from scipy.sparse import csr_array
 from itertools import product
 from tokamesh.utilities import UniformGridLookup, build_edge_map
+
+
+_BARYCENTRIC_TOLERANCE = 64 * finfo(float).eps
 
 
 class TriangularMesh:
@@ -256,7 +259,12 @@ class TriangularMesh:
         lam1 = (lam1_R[:, None] * dR + lam1_z[:, None] * dz) / twice_area
         lam2 = (lam2_R[:, None] * dR + lam2_z[:, None] * dz) / twice_area
         lam3 = 1 - lam1 - lam2
-        bools = (lam1 >= 0.0) & (lam2 >= 0.0) & (lam3 >= 0.0)
+        # Allow roundoff at edges without accepting appreciably exterior points.
+        bools = (
+            (lam1 >= -_BARYCENTRIC_TOLERANCE)
+            & (lam2 >= -_BARYCENTRIC_TOLERANCE)
+            & (lam3 >= -_BARYCENTRIC_TOLERANCE)
+        )
         i1, i2 = bools.nonzero()
 
         coords = zeros([R.size, 3])
@@ -265,6 +273,10 @@ class TriangularMesh:
         coords[i2, 2] = lam3[i1, i2]
         container_triangles = full(R.size, fill_value=-1)
         container_triangles[i2] = search_triangles[i1]
+        inside = container_triangles >= 0
+        inside_coords = coords[inside].clip(min=0.0)
+        inside_coords /= inside_coords.sum(axis=1, keepdims=True)
+        coords[inside] = inside_coords
         return coords, container_triangles
 
     def draw(self, ax, **kwargs):
